@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Cliffside Hang</title>
+  <meta name="description" content="A modern cliffside house at sunset, with chibi bears and passing boats." />
+  <meta name="theme-color" content="#2a2350" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #2a2350; }
+    canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: manipulation; cursor: pointer; }
+    .hud {
+      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 16px;
+      font-family: "Fredoka", system-ui, sans-serif; color: #fff4e6;
+      text-shadow: 0 2px 10px rgba(60, 20, 60, .45); pointer-events: none; user-select: none;
+    }
+    .hud h1 { margin: 0; font-size: clamp(22px, 3.2vw, 34px); font-weight: 600; letter-spacing: .5px; }
+    .hud p { margin: 4px 0 0; font-size: clamp(12px, 1.4vw, 15px); opacity: .85; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Animated sunset scene: a modern house on a cliff with chibi bears and boats sailing by"></canvas>
+  <div class="hud">
+    <h1>Cliffside Hang</h1>
+    <p>tap a bear · tap the water · tap the house</p>
+  </div>
+  <script src="scene.js"></script>
+</body>
+</html>
