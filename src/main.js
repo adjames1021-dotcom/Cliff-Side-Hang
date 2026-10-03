@@ -7,6 +7,10 @@ import { Effects } from './effects.js';
 import { DayNight } from './daynight.js';
 import { buildScenery } from './scenery.js';
 import { Post } from './post.js';
+import { Waters } from './water.js';
+import { Grass } from './grass.js';
+import { STYLE, setStyle } from './materials.js';
+import { settings, loadSettings, onSettings, setSetting, applyPreset, buildMenu, PRESETS } from './settings.js';
 import { Creator, loadProfile, toast, randomName, showPrompt, EmoteWheel, overlay } from './ui.js';
 import { Net, Chat, renderLobby, readInvite, makeCode, copyText } from './net.js';
 import { Snapshots, updateRemote, RoomClock, Shared, lerpAngle } from './sync.js';
@@ -18,8 +22,12 @@ const r2 = (v) => Math.round(v * 100) / 100;
 
 // ---------- renderer + scene ----------
 const canvas = $('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-const maxPR = Math.min(window.devicePixelRatio || 1, 2);
+const params = new URLSearchParams(location.search);
+loadSettings();
+if (PRESETS[params.get('gfx')]) applyPreset(params.get('gfx')); // e.g. ?gfx=ultra for screenshots
+if (params.get('view') === 'first') settings.view = 'first';
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+let maxPR = Math.min(window.devicePixelRatio || 1, 2) * settings.res;
 let pixelRatio = maxPR;
 renderer.setPixelRatio(pixelRatio);
 const scene = new THREE.Scene();
@@ -28,6 +36,9 @@ const fx = new Effects(scene);
 const world = buildWorld(scene, fx);
 const sky = new DayNight(scene, renderer, world, fx);
 const scenery = buildScenery(scene, world, fx);
+const waters = new Waters(scene, renderer);
+for (const m of world.waterMeshes) m.material = waters.pond;
+const grass = new Grass(scene, { density: world.grassDensity, height: groundHeight, rect: [-20, -22, 42, 44] });
 const post = new Post(renderer, scene, camera);
 const net = new Net();
 const shared = new Shared();
@@ -35,12 +46,12 @@ const clock = new RoomClock();
 const audio = new Audio();
 
 const game = {
-  scene, camera, renderer, world, fx, sky, net, shared, clock, audio, post,
+  scene, camera, renderer, world, fx, sky, net, shared, clock, audio, post, waters, grass, settings,
   players: new Map(), mode: 'title', t: 0, maxPlayers: 8, toast,
 };
 game.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
-game.noRender = new URLSearchParams(location.search).has('norender'); // headless tests only
-game.lockQuality = new URLSearchParams(location.search).has('hq'); // keep full quality (screenshots)
+game.noRender = params.has('norender'); // headless tests only
+game.lockQuality = params.has('hq'); // keep the chosen quality (screenshots)
 window.__hh = game; // handy for debugging and the Playwright checks
 
 // ---------- local player ----------
@@ -69,6 +80,8 @@ function addRemote(rec) {
       pos: new THREE.Vector3(...rec.p), yaw: rec.r || 0, snaps: new Snapshots(), speed: 0, pose: rec.a || 'idle',
       swing: rec.s || 0, prop: null, seat: null, grounded: true, vy: 0,
     };
+    p.char.setFur(settings.fur);
+    p.char.setShadows(settings.shadows > 0);
     p.char.addTo(scene);
     game.players.set(p.id, p);
   } else if (p !== me) {
@@ -123,6 +136,7 @@ addEventListener('keydown', (e) => {
     case 'KeyB': openBook(); break;
     case 'KeyM': toggleSound(); break;
     case 'KeyR': if (me.prop && !me.busy) setMyProp(null); break;
+    case 'KeyV': toggleView(); break;
     case 'Escape':
       if (wheel.isOpen) wheel.close();
       else if ($('lobby').classList.contains('hidden') === false) $('lobby').classList.add('hidden');
@@ -139,22 +153,57 @@ let drag = null;
 canvas.addEventListener('pointerdown', (e) => {
   audio.unlock();
   if (e.pointerType === 'touch') return;
+  // first person on a desktop: click to grab the mouse (Esc lets go)
+  if (firstPerson() && !document.pointerLockElement && !game.lookHook && canvas.requestPointerLock) {
+    try { canvas.requestPointerLock()?.catch?.(() => {}); } catch {}
+  }
   drag = { x: e.clientX, y: e.clientY };
   canvas.setPointerCapture(e.pointerId);
   canvas.focus();
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!drag || e.pointerType === 'touch') return;
+  if (e.pointerType === 'touch') return;
+  if (document.pointerLockElement === canvas) { orbit(e.movementX, e.movementY); return; }
+  if (!drag) return;
   orbit(e.clientX - drag.x, e.clientY - drag.y);
   drag.x = e.clientX; drag.y = e.clientY;
 });
 canvas.addEventListener('pointerup', () => { drag = null; });
-canvas.addEventListener('wheel', (e) => { cam.dist = THREE.MathUtils.clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 3, 15); e.preventDefault(); }, { passive: false });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (game.mode !== 'play' || game.cameraOverride) return;
+  // zoom all the way in to step into first person, scroll out to step back
+  if (firstPerson()) { if (e.deltaY > 0) { cam.dist = 3; setSetting('view', 'third'); } return; }
+  if (e.deltaY < 0 && cam.dist <= 3.01) { setSetting('view', 'first'); return; }
+  cam.dist = THREE.MathUtils.clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 3, 15);
+}, { passive: false });
 function orbit(dx, dy) {
   if (game.mode === 'creator') { game.preview.spin += dx * 0.01; return; }
   if (game.lookHook?.(dx, dy)) return;
+  if (firstPerson()) {
+    cam.yaw -= dx * 0.0042;
+    cam.pitch = THREE.MathUtils.clamp(cam.pitch + dy * 0.0042, -1.35, 1.35);
+    return;
+  }
   cam.yaw -= dx * 0.006;
   cam.pitch = THREE.MathUtils.clamp(cam.pitch + dy * 0.005, -0.05, 1.25);
+}
+
+// ---------- first / third person ----------
+const firstPerson = () => settings.view === 'first' && game.mode === 'play';
+game.firstPerson = firstPerson;
+function toggleView() { setSetting('view', settings.view === 'first' ? 'third' : 'first'); }
+game.toggleView = toggleView;
+function onViewChanged() {
+  if (settings.view === 'first') {
+    cam.pitch = 0.08;
+    toast(isTouch ? 'First person — drag to look around' : 'First person — click to grab the mouse, V or scroll out to step back', 2600);
+  } else {
+    cam.pitch = THREE.MathUtils.clamp(cam.pitch, 0.15, 1.1);
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+  $('btn-view').textContent = settings.view === 'first' ? '🎥' : '👀';
+  resize();
 }
 
 // touch: left side = joystick, elsewhere = orbit, two fingers = pinch zoom
@@ -324,7 +373,8 @@ function updateMe(dt) {
     me.grounded = false;
   }
   const hs = Math.hypot(me.vel.x, me.vel.z);
-  if (hs > 0.2) me.yaw = lerpAngle(me.yaw, Math.atan2(me.vel.x, me.vel.z), 1 - Math.exp(-dt * 12));
+  if (firstPerson()) me.yaw = lerpAngle(me.yaw, cam.yaw + Math.PI, 1 - Math.exp(-dt * 20));
+  else if (hs > 0.2) me.yaw = lerpAngle(me.yaw, Math.atan2(me.vel.x, me.vel.z), 1 - Math.exp(-dt * 12));
   me.speed = hs;
 }
 
@@ -334,8 +384,23 @@ const camBlockers = [
   { x0: -4, z0: L.stage.z0 - 0.3, x1: 4, z1: L.stage.z0 + 0.45, h: 4.2 },
 ];
 const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), camDir = new THREE.Vector3();
+const eye = { y: null, pos: new THREE.Vector3() };
+function firstPersonCamera(dt) {
+  const c = me.char;
+  // the eyes follow the body (seats, swings, sitting on the ground); bounces are smoothed out
+  c.headWorld(eye.pos);
+  if (!me.seat) eye.pos.sub(c.root.position).add(me.pos).y -= GROUND_POSES.has(me.pose) ? SIT_DROP : 0;
+  eye.y = eye.y === null || Math.abs(eye.y - eye.pos.y) > 1.5 ? eye.pos.y : eye.y + (eye.pos.y - eye.y) * (1 - Math.exp(-dt * (me.seat ? 30 : 14)));
+  camera.position.set(eye.pos.x, eye.y, eye.pos.z);
+  const cp = Math.cos(cam.pitch);
+  camDir.set(-Math.sin(cam.yaw) * cp, -Math.sin(cam.pitch), -Math.cos(cam.yaw) * cp);
+  camera.lookAt(tmp.copy(camera.position).add(camDir));
+  cam.target.copy(camera.position);
+  setNearFar(0.06, 700);
+}
 function updateCamera(dt) {
   if (game.cameraOverride) { game.cameraOverride(dt); return; }
+  if (firstPerson()) { firstPersonCamera(dt); return; }
   tmp.set(me.pos.x, me.pos.y + 1.0, me.pos.z);
   if (me.seat && !me.seatPose?.stand) tmp.y -= SIT_DROP;
   cam.target.lerp(tmp, 1 - Math.exp(-dt * 10));
@@ -371,7 +436,8 @@ function resize() {
   renderer.setPixelRatio(pixelRatio);
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  camera.fov = game.fovOverride || (w < h ? 62 : 50);
+  const wide = settings.fov === 'wide' ? 12 : 0;
+  camera.fov = game.fovOverride || (firstPerson() ? 72 + wide : (w < h ? 62 : 50) + wide);
   camera.updateProjectionMatrix();
   const buf = renderer.getDrawingBufferSize(new THREE.Vector2());
   outlineUniforms.uRes.value.copy(buf);
@@ -383,19 +449,47 @@ game.resize = resize;
 addEventListener('resize', resize);
 resize();
 
-const perf = { frames: 0, time: 0, good: 0 };
+// Auto-adjust: when frames drop, render fewer pixels first, then skip the post effects; recover when smooth.
+const perf = { frames: 0, time: 0, good: 0, shown: 0, fpsFrames: 0, fpsTime: 0 };
+const minPR = () => Math.max(0.5, maxPR * 0.6);
 function adaptQuality(dt) {
-  if (game.lockQuality) return;
+  perf.fpsFrames++; perf.fpsTime += dt;
+  if (perf.fpsTime >= 0.5) {
+    if (settings.fps) $('fps').textContent = `${Math.round(perf.fpsFrames / perf.fpsTime)} fps · ${Math.round((pixelRatio / Math.max(0.01, maxPR)) * settings.res * 100)}%`;
+    perf.fpsFrames = 0; perf.fpsTime = 0;
+  }
+  if (game.lockQuality || !settings.auto) return;
   perf.frames++; perf.time += dt;
   if (perf.time < 2) return;
   const fps = perf.frames / perf.time;
   perf.frames = 0; perf.time = 0;
-  // struggling? drop the bloom first, then resolution
-  if (fps < 40 && post.enabled) { post.enabled = false; perf.good = 0; }
-  else if (fps < 40 && pixelRatio > 0.7) { pixelRatio = Math.max(0.7, pixelRatio - 0.25); resize(); perf.good = 0; }
-  else if (fps > 58 && !post.enabled) { if (++perf.good >= 6) { post.enabled = true; perf.good = 0; } }
-  else if (fps > 58 && pixelRatio < maxPR) { if (++perf.good >= 4) { pixelRatio = Math.min(maxPR, pixelRatio + 0.25); resize(); perf.good = 0; } }
+  if (fps < 42 && pixelRatio > minPR() + 0.01) { pixelRatio = Math.max(minPR(), pixelRatio - 0.15); resize(); perf.good = 0; }
+  else if (fps < 30 && post.enabled) { post.enabled = false; perf.good = 0; }
+  else if (fps > 57 && !post.enabled) { if (++perf.good >= 5) { post.enabled = true; perf.good = 0; } }
+  else if (fps > 57 && pixelRatio < maxPR) { if (++perf.good >= 3) { pixelRatio = Math.min(maxPR, pixelRatio + 0.15); resize(); perf.good = 0; } }
+  else if (fps <= 57) perf.good = 0;
 }
+
+// ---------- graphics settings ----------
+function applySettings(_s, changed) {
+  const has = (k) => !changed || changed.includes(k);
+  if (has('res')) { maxPR = Math.min(window.devicePixelRatio || 1, 2) * settings.res; pixelRatio = maxPR; post.enabled = true; }
+  if (has('aa')) post.setAA(settings.aa);
+  if (has('shadows')) sky.setShadowLevel(settings.shadows);
+  if (has('lights')) sky.setLampCount(settings.lights);
+  if (has('grass')) grass.setLevel(settings.grass);
+  if (has('reflections')) waters.setReflections(settings.reflections);
+  if (has('style')) setStyle(settings.style);
+  if (has('fur')) for (const p of allChars()) p.char.setFur(settings.fur);
+  if (has('shadows') || has('style')) for (const p of allChars()) p.char.setShadows(settings.shadows > 0);
+  Object.assign(post.want, { bloom: settings.bloom, rays: settings.rays, ao: settings.ao });
+  $('fps').classList.toggle('hidden', !settings.fps);
+  if (has('view') && changed) onViewChanged();
+  resize();
+  renderer.shadowMap.needsUpdate = true;
+}
+function allChars() { return [...new Set([me, ...game.players.values(), game.preview])].filter(Boolean); }
+onSettings(applySettings);
 
 // ---------- name tags + speech bubbles ----------
 const labels = $('labels');
@@ -421,7 +515,7 @@ function updateTags() {
     const sitting = p.char.root.position.y < (p.seatPose ? p.seatPose.y : p.pos.y) - 0.05;
     v3.set(root.x, root.y + p.char.labelY - (sitting ? 0.05 : 0), root.z).project(camera);
     const dist = camera.position.distanceTo(root);
-    if (v3.z > 1 || dist > 40 || game.mode !== 'play' || game.hideTags) { p.tag.el.style.display = 'none'; continue; }
+    if (v3.z > 1 || dist > 40 || game.mode !== 'play' || game.hideTags || (p === me && firstPerson())) { p.tag.el.style.display = 'none'; continue; }
     p.tag.el.style.display = '';
     const sx = (v3.x * 0.5 + 0.5) * w, sy = (-v3.y * 0.5 + 0.5) * h;
     const s = THREE.MathUtils.clamp(9 / dist, 0.55, 1.1);
@@ -532,8 +626,12 @@ game.endBusy = () => {
 // ---------- emotes ----------
 const headPos = (p, up = 0) => new THREE.Vector3(p.char.root.position.x, p.char.root.position.y + p.char.labelY - 0.25 + up, p.char.root.position.z);
 game.headPos = headPos;
+// one emote at a time: a new one waits until the current one has finished
+function emoteLocked() { return !!me.char.emote; }
+game.emoteLocked = emoteLocked;
 function doEmote(id, x) {
   if (me.busy) return;
+  if (emoteLocked() && id !== 'catch' && id !== 'show') { wheel.nudge(); return; }
   if (id === 'sitground' || id === 'sleep') {
     if (me.seat) standUp();
     me.vel.set(0, 0, 0);
@@ -582,7 +680,7 @@ function emoteTicks(dt) {
     }
   }
 }
-const wheel = new EmoteWheel((id) => doEmote(id));
+const wheel = new EmoteWheel((id) => doEmote(id), () => emoteLocked());
 
 // ---------- chat ----------
 const chat = new Chat((text) => {
@@ -782,7 +880,10 @@ net.on('chat', (m) => {
 net.on('emote', (m) => {
   const p = game.players.get(m.id);
   if (!p || p === me) return;
-  if (m.e !== 'sitground' && m.e !== 'sleep' && m.e !== 'sip') p.char.playEmote(m.e);
+  if (m.e !== 'sitground' && m.e !== 'sleep' && m.e !== 'sip') {
+    if (p.char.emote && m.e !== 'catch' && m.e !== 'show') return;
+    p.char.playEmote(m.e);
+  }
   emoteFx(p, m.e, m.x);
 });
 net.on('sit', (m) => {
@@ -826,9 +927,9 @@ function updateRoomUI() {
 }
 
 // ---------- overlays: lobby, pause, book, sound ----------
-const overlayOpen = () => ['pause', 'book'].some((id) => !$(id).classList.contains('hidden'));
-function closeOverlays() { overlay('pause', false); overlay('book', false); }
-function openPause() { $('lobby').classList.add('hidden'); overlay('pause', true); }
+const overlayOpen = () => ['pause', 'book', 'gfx'].some((id) => !$(id).classList.contains('hidden'));
+function closeOverlays() { overlay('pause', false); overlay('book', false); overlay('gfx', false); }
+function openPause() { $('lobby').classList.add('hidden'); overlay('pause', true); if (document.pointerLockElement) document.exitPointerLock(); }
 function openBook() { game.renderBook?.(); overlay('pause', false); overlay('book', true); }
 function toggleSound() {
   audio.setMuted(!audio.muted);
@@ -853,6 +954,13 @@ $('p-invite').onclick = copyInvite;
 $('p-book').onclick = openBook;
 $('p-sound').onclick = toggleSound;
 $('p-leave').onclick = () => { closeOverlays(); leaveToCreator(); };
+$('p-gfx').onclick = () => openGfx();
+$('btn-view').onclick = () => toggleView();
+$('title-gfx').onclick = () => openGfx();
+$('gfx-close').onclick = () => overlay('gfx', false);
+$('gfx').addEventListener('click', (e) => { if (e.target.id === 'gfx') overlay('gfx', false); });
+function openGfx() { overlay('pause', false); overlay('gfx', true); if (document.pointerLockElement) document.exitPointerLock(); }
+buildMenu($('gfx-list'));
 $('book-close').onclick = () => overlay('book', false);
 for (const id of ['pause', 'book']) $(id).addEventListener('click', (e) => { if (e.target.id === id) overlay(id, false); });
 
@@ -877,6 +985,7 @@ function placeCharacter(p, dt) {
     c.root.rotation.set(0, p.yaw, 0);
   }
   if (pose === 'walk' || pose === 'run' || pose === 'jump') pose = 'idle';
+  c.setHiddenFromCamera(p === me && firstPerson() && !game.cameraOverride);
   c.update(dt, {
     speed: p.speed || 0, grounded: p.grounded !== false, vy: p.vy || 0, landed: p.landed, pose,
     groundY: p.seatPose ? p.seatPose.groundY ?? groundHeight(c.root.position.x, c.root.position.z) : groundHeight(p.pos.x, p.pos.z),
@@ -885,6 +994,19 @@ function placeCharacter(p, dt) {
 
 // ---------- main loop ----------
 let last = performance.now();
+let crosshairOn = false;
+const rayLight = { dir: sky.lightDir, color: new THREE.Color(), strength: 0 };
+const moonCol = new THREE.Color('#9fb0ff');
+const mirrorHide = [grass.mesh];
+const gc = new THREE.Vector3();
+function grassCenter(focus) {
+  // centre the grass patch a little ahead of the camera, around whoever we're looking at
+  if (!focus) { gc.set(0, 0, 0); return; }
+  camera.getWorldDirection(tmp);
+  tmp.y = 0;
+  if (tmp.lengthSq() > 1e-6) tmp.normalize();
+  gc.set(focus.x + tmp.x * 5, 0, focus.z + tmp.z * 5);
+}
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -901,6 +1023,9 @@ function frame(now) {
     showPrompt(current?.label || '', current?.key || (isTouch ? 'Tap' : 'E'));
     emoteTicks(dt);
     updatePings(dt);
+    wheel.refresh();
+    const ch = firstPerson() && !game.cameraOverride;
+    if (ch !== crosshairOn) { crosshairOn = ch; $('crosshair').classList.toggle('hidden', !ch); }
   } else if (game.mode === 'title') {
     titleCamera(t);
     for (const a of activities) a.update?.(dt, t);
@@ -911,14 +1036,26 @@ function frame(now) {
   for (const p of game.players.values()) placeCharacter(p, dt);
   if (game.mode === 'creator') placeCharacter(game.preview, dt);
 
-  sky.update(clock.day(), dt, t, camera, game.mode === 'play' ? me.pos : null);
+  const focus = game.mode === 'play' ? me.pos : game.mode === 'creator' ? game.preview.pos : null;
+  sky.update(clock.day(), dt, t, camera, focus, game.fireInfo);
   world.update(dt, t, clock.ms() / 1000, { night: sky.night });
-  scenery.update(dt, t, clock.ms() / 1000, { night: sky.night, horizon: sky.horizon, focus: game.mode === 'play' ? me.pos : null });
-  post.setLook(sky.night, sky.golden);
+  scenery.update(dt, t, clock.ms() / 1000, { night: sky.night, horizon: sky.horizon, focus });
+  waters.update(t, camera, sky.lightDir, sky.night);
+  grassCenter(focus);
+  grass.update(t, gc, game.players.values());
+  const sunUp = sky.sunDir.y > -0.03;
+  rayLight.strength = sunUp ? 0.5 + sky.golden * 0.9 : 0.22 * sky.night;
+  rayLight.color.copy(sunUp ? sky.sunColor : moonCol);
+  post.setLook(sky.night, sky.golden, rayLight, STYLE.name === 'toon');
+  grass.setLight(sky.lightDir, rayLight.color, sunUp ? 0.6 + sky.golden : 0.08);
   audio.update?.(dt, game);
   fx.update(dt);
   updateTags();
-  if (!game.noRender) { post.render(); adaptQuality(dt); }
+  if (!game.noRender) {
+    if (waters.mirror.on) waters.renderMirror(camera, mirrorHide);
+    post.render();
+    adaptQuality(dt);
+  }
   requestAnimationFrame(frame);
 }
 
@@ -1017,6 +1154,9 @@ function startPlay(code) {
 }
 
 function leaveToCreator() {
+  crosshairOn = false;
+  $('crosshair').classList.add('hidden');
+  if (document.pointerLockElement) document.exitPointerLock();
   for (const a of activities) a.onEnd?.();
   if (me.seat) applySit(me.id, null);
   me.busy = null;
@@ -1066,6 +1206,8 @@ if (saved) { me.name = saved.name; me.avatar = saved.avatar; me.char.setAvatar(m
 else me.name = randomName();
 
 setupTouch();
+applySettings(settings, null);
+$('btn-view').textContent = settings.view === 'first' ? '🎥' : '👀';
 $('btn-play').addEventListener('click', () => { audio.unlock(); openCreator(false); });
 renderer.shadowMap.needsUpdate = true;
 requestAnimationFrame(frame);

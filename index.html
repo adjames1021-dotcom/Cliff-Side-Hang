@@ -179,6 +179,23 @@
     .overlay .card { width: min(380px, 100%); display: flex; flex-direction: column; gap: 11px; max-height: calc(100dvh - 32px); overflow: auto; }
     .overlay h2 { font-size: 26px; text-align: center; margin-bottom: 4px; }
     #book .card { width: min(560px, 100%); }
+    #gfx .card { width: min(560px, 100%); }
+    #gfx-list { display: flex; flex-direction: column; gap: 7px; }
+    .gfx-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 4px 0; border-bottom: 2px dashed rgba(75,46,29,.15); }
+    .gfx-row:first-child { padding-bottom: 10px; }
+    .gfx-label { font-weight: 600; font-size: 15px; }
+    .seg { display: flex; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; background: #fff; flex-shrink: 0; }
+    .seg button { font-family: var(--font); font-weight: 600; font-size: 13px; color: var(--ink); background: transparent; border: 0; padding: 5px 11px; cursor: pointer; }
+    .seg button + button { border-left: 2px solid var(--ink); }
+    .seg button:hover { background: #FFF3DC; }
+    .seg button.on { background: var(--apricot); }
+    #gfx-note { margin: 0; text-align: center; }
+    #fps { position: absolute; top: max(70px, calc(env(safe-area-inset-top) + 56px)); right: 14px; font-weight: 600; font-size: 13px; background: rgba(255,243,220,.85); border: 2px solid var(--ink); border-radius: 999px; padding: 2px 10px; pointer-events: none; font-variant-numeric: tabular-nums; }
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,243,220,.9); box-shadow: 0 0 0 1.5px rgba(75,46,29,.55); pointer-events: none; z-index: 4; }
+    #title-gfx { margin-top: 10px; }
+    .wheel-ring.locked .wheel-item { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
+    .wheel-ring.shake { animation: shake .3s; }
+    @keyframes shake { 25% { transform: translateX(-7px); } 75% { transform: translateX(7px); } }
     #book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
     .fish { background: #fff; border: 2px solid var(--ink); border-radius: 16px; padding: 8px; text-align: center; font-size: 13px; font-weight: 500; }
     .fish .ico { font-size: 34px; line-height: 1.1; }
@@ -256,6 +273,7 @@
       <p>a cozy little cliffside village for you and your friends</p>
     </div>
     <button id="btn-play" class="btn primary big">Play</button>
+    <button id="title-gfx" class="btn small ghost">Graphics settings</button>
     <p id="title-hint"></p>
   </section>
 
@@ -294,12 +312,14 @@
   <section id="hud" class="hidden">
     <button id="room-pill" class="pill" title="Who's here"><span class="dot" id="net-dot"></span><span id="room-code">Solo</span><span id="room-count"></span></button>
     <div class="top-right">
+      <button class="icon-btn" id="btn-view" title="First / third person (V)">👀</button>
       <button class="icon-btn" id="btn-emote" title="Emotes (Q)">😊</button>
       <button class="icon-btn" id="btn-chat" title="Chat (Enter)">💬</button>
       <button class="icon-btn" id="btn-book" title="Fish book (B)">📖</button>
       <button class="icon-btn" id="btn-sound" title="Sound on/off (M)">🔊</button>
       <button class="icon-btn" id="btn-menu" title="Menu (Esc)">☰</button>
     </div>
+    <div id="fps" class="hidden"></div>
     <div id="prompt" class="prompt hidden"></div>
     <div id="chat-log"></div>
     <form id="chat-form" class="hidden" autocomplete="off">
@@ -344,9 +364,10 @@
       <button class="btn" id="p-look">Change my look</button>
       <button class="btn" id="p-invite">Copy invite link</button>
       <button class="btn" id="p-book">Fish book</button>
+      <button class="btn" id="p-gfx">Graphics</button>
       <button class="btn" id="p-sound">Sound: on</button>
       <button class="btn" id="p-leave">Leave room</button>
-      <p class="small" style="text-align:center;margin:0">WASD/arrows walk · Shift run · Space hop · E use · Q emotes · Enter chat · G ping · drag to look · wheel to zoom</p>
+      <p class="small" style="text-align:center;margin:0">WASD/arrows walk · Shift run · Space hop · E use · Q emotes · Enter chat · G ping · V first person · drag to look · wheel to zoom</p>
     </div>
   </div>
 
@@ -359,6 +380,16 @@
     </div>
   </div>
 
+  <div id="gfx" class="overlay hidden">
+    <div class="card">
+      <h2>Graphics</h2>
+      <div id="gfx-list"></div>
+      <p id="gfx-note" class="small">Ultra adds sea reflections and ambient occlusion. Auto-adjust lowers the resolution a little if things get choppy.</p>
+      <button class="btn primary" id="gfx-close">Done</button>
+    </div>
+  </div>
+
+  <div id="crosshair" class="hidden"></div>
   <div id="catch" class="hidden"></div>
   <div id="scope" class="hidden"></div>
   <div id="toasts"></div>

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { REAL, STYLE, guessKind, registerMesh, registerOutline } from './materials.js';
 
 export const C = {
   cream: '#F8E8C8', cream2: '#FFF3DC', apricot: '#F4A646', pumpkin: '#E8893A',
@@ -49,9 +50,10 @@ export function toonMaterial(opts = {}) {
 // Shared material for everything built from vertex-coloured parts.
 export const MAT = {
   toon: toonMaterial({ vertexColors: true }),
-  // Bulbs, windows and flames: unlit so they read as glowing at night.
+  // Bulbs, windows and flames: unlit (and over-bright at night) so they glow and bloom.
   glow: new THREE.MeshBasicMaterial({ vertexColors: true, fog: true }),
 };
+STYLE.toon = MAT.toon;
 
 // ---------- ink outlines ----------
 
@@ -181,10 +183,11 @@ export class Builder {
     return this;
   }
 
-  add(geo, color, t = {}, { outline = true } = {}) {
+  // mat: which surface this part is (wood, stone, fur...); guessed from the colour if left out.
+  add(geo, color, t = {}, { outline = true, mat } = {}) {
     let m = t.isMatrix4 ? t : matrixOf(t);
     if (this.base) m = this.base.clone().multiply(m);
-    this.parts.push({ geo: prepGeo(geo, m, color), outline });
+    this.parts.push({ geo: prepGeo(geo, m, color), outline, mat: mat || guessKind(color) });
     return this;
   }
 
@@ -201,23 +204,38 @@ export class Builder {
     return list.length ? mergeGeometries(list) : null;
   }
 
-  // Returns a Group with the solid mesh and its outline.
-  build({ material = MAT.toon, outline = true, castShadow = false, receiveShadow = true } = {}) {
+  // Returns a Group: one merged mesh per kind of surface, plus the ink outline (toon style only).
+  build({ material = null, outline = true, castShadow = false, receiveShadow = true } = {}) {
     const group = new THREE.Group();
     if (this.empty) return group;
-    const mesh = new THREE.Mesh(this.geometry(), material);
-    mesh.castShadow = castShadow;
-    mesh.receiveShadow = receiveShadow;
-    group.add(mesh);
+    const make = (geo, mat, kind) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = receiveShadow;
+      group.add(mesh);
+      if (kind) registerMesh(mesh, kind);
+      return mesh;
+    };
+    if (material) {
+      make(this.geometry(), material, material === MAT.glow ? 'glow' : null);
+    } else {
+      const byKind = new Map();
+      for (const p of this.parts) {
+        if (!byKind.has(p.mat)) byKind.set(p.mat, []);
+        byKind.get(p.mat).push(p.geo);
+      }
+      for (const [kind, geos] of byKind) make(geos.length > 1 ? mergeGeometries(geos) : geos[0], REAL[kind] || REAL.paint, kind);
+    }
     if (outline) {
       const og = this.outlineGeometry();
       if (og) {
         const o = new THREE.Mesh(og, outlineMaterial);
         o.raycast = () => {};
         group.add(o);
+        registerOutline(o);
       }
     }
-    group.userData.mesh = mesh;
+    group.userData.mesh = group.children[0];
     return group;
   }
 }

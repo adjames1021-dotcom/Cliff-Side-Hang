@@ -12,10 +12,14 @@ const ANIMALS = ['cat', 'bunny', 'bear', 'puppy', 'fox'];
 const ACCESSORIES = ['beret', 'bowtie', 'scarf', 'crown', 'glasses', 'backpack'];
 const ANIMS = new Set(['idle', 'walk', 'run', 'jump', 'sit', 'stool', 'swing', 'seesaw', 'piano', 'drums', 'play', 'fish', 'toast', 'sitground', 'sleep', 'scope']);
 const EMOTES = new Set(['wave', 'dance', 'clap', 'laugh', 'sitground', 'heart', 'sleep', 'cheer', 'catch', 'show', 'sip']);
+// How long each emote plays (ms); a player can't start another until it's done (a little slack for lag).
+const EMOTE_MS = { wave: 2200, dance: 4000, clap: 2000, laugh: 2000, heart: 2400, cheer: 2400, sitground: 600, sleep: 600 };
+const EMOTE_SLACK = 350;
 const PROP_RE = /^(mug|shake|sandwich|apple|cookie|rod|stick|mallow-(raw|toasty|gold|burnt))$/;
 const SEAT_RE = /^[a-z0-9-]{1,24}$/;
 const INSTRUMENTS = new Set(['piano', 'drums', 'xylo']);
-const B = { minX: -20, maxX: 21, minZ: -21, maxZ: 21, minY: -2, maxY: 8 };
+// The whole explorable map: the village, the woods, the cove under the cliff and the sea you can sail.
+const B = { minX: -320, maxX: 90, minZ: -320, maxZ: 320, minY: -12, maxY: 40 };
 const BALL_B = { minX: -18.4, maxX: 19.1, minZ: -19.1, maxZ: 19.1 }; // a hair looser than the client's walls so they never fight
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
@@ -154,6 +158,12 @@ export class Room extends DurableObject {
       case 'move': return this.onMove(pl, m);
       case 'emote': {
         if (!EMOTES.has(m.e)) return;
+        // one emote at a time (catches, show-offs and sips are reactions, not emotes)
+        if (EMOTE_MS[m.e]) {
+          const now = Date.now();
+          if (now < (pl.emoteUntil || 0)) return;
+          pl.emoteUntil = now + EMOTE_MS[m.e] - EMOTE_SLACK;
+        }
         const x = typeof m.x === 'string' ? cleanText(m.x, 24) : undefined;
         return this.broadcast({ t: 'emote', id: pl.id, e: m.e, x }, pl.id);
       }

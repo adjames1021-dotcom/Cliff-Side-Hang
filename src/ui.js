@@ -141,8 +141,10 @@ export function showPrompt(text, key = 'E') {
 
 // ---------- emote wheel ----------
 export class EmoteWheel {
-  constructor(onPick) {
+  constructor(onPick, isLocked = () => false) {
     this.onPick = onPick;
+    this.isLocked = isLocked;
+    this.nudgeAt = 0;
     this.el = $('wheel');
     const ring = el('div', 'wheel-ring');
     EMOTES.forEach((e, i) => {
@@ -154,15 +156,35 @@ export class EmoteWheel {
       b.onclick = (ev) => { ev.stopPropagation(); this.pick(e.id); };
       ring.append(b);
     });
-    ring.append(el('div', 'wheel-center', 'Emotes'));
+    this.center = el('div', 'wheel-center', 'Emotes');
+    ring.append(this.center);
+    this.ring = ring;
     this.el.append(ring);
     this.el.addEventListener('click', () => this.close());
   }
   get isOpen() { return !this.el.classList.contains('hidden'); }
-  open() { this.el.classList.remove('hidden'); }
+  open() { this.el.classList.remove('hidden'); this.refresh(); }
+  // greyed out while an emote is still playing: one at a time
+  refresh() {
+    if (!this.isOpen) return;
+    const locked = this.isLocked();
+    if (locked === this.locked) return;
+    this.locked = locked;
+    this.ring.classList.toggle('locked', locked);
+    this.center.textContent = locked ? 'One at a time…' : 'Emotes';
+  }
+  nudge() {
+    this.ring.classList.remove('shake'); void this.ring.offsetWidth; this.ring.classList.add('shake');
+    const now = performance.now();
+    if (now - this.nudgeAt > 1500) { this.nudgeAt = now; toast('Let your emote finish first', 1400); }
+  }
   close() { this.el.classList.add('hidden'); }
   toggle() { this.isOpen ? this.close() : this.open(); }
-  pick(id) { this.close(); this.onPick(id); }
+  pick(id) {
+    if (this.isLocked()) { this.nudge(); return; }
+    this.close();
+    this.onPick(id);
+  }
   key(n) { const e = EMOTES[n - 1]; if (e) this.pick(e.id); }
 }
 
