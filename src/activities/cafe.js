@@ -17,10 +17,10 @@ export default function cafe(game) {
   const { me, fx, audio } = game;
   const counter = { x: (L.counter.x0 + L.counter.x1) / 2, z: L.counter.z1 + 0.35 };
 
-  function offer(list, spot, r, cycle) {
+  function offer(list, spot, r, cycle, priority = 0) {
     const own = cycle.find(([have]) => have === me.prop) || cycle[0];
     list.push({
-      x: spot.x, z: spot.z, r, label: own[1],
+      x: spot.x, z: spot.z, r, priority, label: own[1],
       use: () => {
         game.setMyProp(own[2]);
         audio.play('pop');
@@ -32,7 +32,7 @@ export default function cafe(game) {
   return {
     interactables(list) {
       if (game.mode !== 'play' || me.busy) return;
-      offer(list, counter, 1.7, CAFE);
+      offer(list, counter, 1.7, CAFE, 0.45); // stools sit right in front, so the counter gets a nudge
       offer(list, L.basket, 1.25, PICNIC);
     },
   };

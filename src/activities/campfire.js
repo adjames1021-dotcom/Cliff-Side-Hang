@@ -28,7 +28,7 @@ export default function campfire(game) {
   const parts = [];
   [[0, 0, 1, C.apricot], [0.14, 0.08, 0.7, C.pumpkin], [-0.12, -0.06, 0.75, C.pumpkin], [0.02, 0.02, 0.55, C.butter]].forEach(([x, z, s, col], i) => {
     const b = new Builder();
-    b.add(lathe([[0, 0], [0.2, 0.08], [0.22, 0.22], [0.13, 0.45], [0.04, 0.62], [0, 0.66]], 14), col, { scale: s });
+    b.add(lathe([[0, 0], [0.2, 0.08], [0.22, 0.22], [0.13, 0.45], [0.04, 0.62], [0, 0.66]], 14), col, { scale: s * 1.45 });
     const g = b.build({ material: MAT.glow, outline: i !== 3 });
     g.position.set(x, 0, z);
     flames.add(g);
@@ -36,7 +36,7 @@ export default function campfire(game) {
   });
   scene.add(flames);
   const tex = glowTexture();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(7, 7).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(9, 9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3 }));
   ground.position.set(F.x, 0.02, F.z);
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   halo.position.set(F.x, 0.7, F.z);
@@ -91,8 +91,8 @@ export default function campfire(game) {
   return {
     interactables(list) {
       if (game.mode !== 'play') return;
-      if (!isLit()) list.push({ x: F.x, z: F.z, r: 2.0, priority: 0.5, label: 'Light the campfire', use: light });
-      else if (!me.prop || !PROP_INFO[me.prop] || me.prop.startsWith('mallow')) list.push({ x: F.x, z: F.z, r: 2.1, priority: 0.5, label: me.prop?.startsWith('mallow') ? 'Toast another marshmallow' : 'Toast a marshmallow', use: startToast });
+      if (!isLit()) list.push({ x: F.x, z: F.z, r: 2.0, priority: 1, label: 'Light the campfire', use: light });
+      else if (!me.prop || !(PROP_INFO[me.prop]?.food || PROP_INFO[me.prop]?.drink)) list.push({ x: F.x, z: F.z, r: 2.0, priority: 1, label: 'Toast a marshmallow', use: startToast });
     },
     key(code) {
       if (me.busy === 'toast' && (code === 'Space' || code === 'KeyE')) { finish(); return true; }

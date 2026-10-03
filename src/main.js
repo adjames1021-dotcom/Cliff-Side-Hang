@@ -84,6 +84,8 @@ function removeRemote(id) {
   shared.setSeat(id, null);
   for (const a of activities) a.onLeave?.(id);
 }
+game.addRemote = addRemote;
+game.removeRemote = removeRemote;
 function clearRemotes() {
   for (const id of [...game.players.keys()]) if (id !== me.id) removeRemote(id);
 }
@@ -662,25 +664,27 @@ function interactables() {
 }
 function pickInteraction() {
   if (me.busy) return game.busyPrompt?.() || null;
+  const consumable = me.prop && PROP_INFO[me.prop] && (PROP_INFO[me.prop].food || PROP_INFO[me.prop].drink);
+  const useLabel = () => (PROP_INFO[me.prop].drink ? `Sip your ${PROP_INFO[me.prop].label}` : `Eat your ${PROP_INFO[me.prop].label}`);
   if (me.seat) {
     for (const a of activities) { const c = a.seatPrompt?.(me.seat); if (c) return c; }
+    if (consumable) return { label: `${useLabel()} (walk to stand)`, use: useProp };
     return { label: 'Stand up', use: standUp };
   }
   if (!me.grounded) return null;
   let best = null, bd = Infinity;
   for (const it of interactables()) {
-    const d = Math.hypot(it.x - me.pos.x, it.z - me.pos.z) - (it.priority || 0);
-    if (d < it.r && d < bd) { bd = d; best = it; }
+    const raw = Math.hypot(it.x - me.pos.x, it.z - me.pos.z);
+    const d = raw - (it.priority || 0); // priority only breaks ties between nearby things
+    if (raw < it.r && d < bd) { bd = d; best = it; }
   }
-  if (!best && me.prop && PROP_INFO[me.prop] && (PROP_INFO[me.prop].food || PROP_INFO[me.prop].drink)) {
-    return { label: PROP_INFO[me.prop].drink ? `Sip your ${PROP_INFO[me.prop].label}` : `Eat your ${PROP_INFO[me.prop].label}`, use: useProp };
-  }
+  if (!best && consumable) return { label: useLabel(), use: useProp };
   return best;
 }
 function act() {
   audio.unlock();
   if (wheel.isOpen) return;
-  const it = current || pickInteraction();
+  const it = pickInteraction();
   if (it) it.use();
 }
 game.act = act;

@@ -16,7 +16,7 @@ const PROP_RE = /^(mug|shake|sandwich|apple|cookie|rod|stick|mallow-(raw|toasty|
 const SEAT_RE = /^[a-z0-9-]{1,24}$/;
 const INSTRUMENTS = new Set(['piano', 'drums', 'xylo']);
 const B = { minX: -20, maxX: 21, minZ: -21, maxZ: 21, minY: -2, maxY: 8 };
-const BALL_B = { minX: -17.85, maxX: 18.55, minZ: -18.55, maxZ: 18.55 };
+const BALL_B = { minX: -18.4, maxX: 19.1, minZ: -19.1, maxZ: 19.1 }; // a hair looser than the client's walls so they never fight
 
 const json = (data, init = {}) => new Response(JSON.stringify(data), {
   ...init, headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*', ...(init.headers || {}) },

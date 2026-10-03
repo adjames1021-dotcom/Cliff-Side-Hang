@@ -290,7 +290,7 @@ export function buildWorld(scene, fx) {
       for (let k = 1; k < 8; k++) {
         const p = curve.getPoint(k / 8);
         G.add(sphere(0.075, 10, 8), bulbCols[k % 4], { pos: [p.x, p.y - 0.09, p.z], scale: [1, 1.25, 1] });
-        lampGlows.push({ p: new THREE.Vector3(p.x, p.y - 0.09, p.z), size: 0.9, color: bulbCols[k % 4] });
+        lampGlows.push({ p: new THREE.Vector3(p.x, p.y - 0.09, p.z), size: 0.6, color: bulbCols[k % 4] });
       }
     }
   }
@@ -304,7 +304,7 @@ export function buildWorld(scene, fx) {
     for (const [dx, dz] of [[-0.13, -0.13], [0.13, -0.13], [-0.13, 0.13], [0.13, 0.13]])
       b.add(rbox(0.04, 0.36, 0.04, 0.015), C.cocoa, { pos: [x + dx, y + h + 0.24, z + dz] }, { outline: false });
     G.add(sphere(0.12, 12, 10), C.butter, { pos: [x, y + h + 0.24, z] });
-    lampGlows.push({ p: new THREE.Vector3(x, y + h + 0.24, z), size: 2.2, color: C.butter });
+    lampGlows.push({ p: new THREE.Vector3(x, y + h + 0.24, z), size: 1.5, color: C.butter });
     circle(x, z, 0.24);
   }
 
@@ -416,11 +416,11 @@ export function buildWorld(scene, fx) {
     b.add(rbox(d.x1 - d.x0 - 0.4, 0.07, 0.07, 0.03), C.honeyDark, { pos: [(d.x0 + d.x1) / 2 + 0.2, d.y - 0.12, d.z0 + 0.03] }, { outline: false });
     b.add(rbox(d.x1 - d.x0 - 0.4, 0.07, 0.07, 0.03), C.honeyDark, { pos: [(d.x0 + d.x1) / 2 + 0.2, d.y - 0.12, d.z1 - 0.03] }, { outline: false });
     // lily pads, keeping clear of the dock and the ducks' loop
-    for (let i = 0; i < 14; i++) {
-      const a = R() * Math.PI * 2, r = 3.0 + R() * 1.1;
+    for (let i = 0; i < 16; i++) {
+      const a = R() * Math.PI * 2, r = 3.6 + R() * 0.4;
       const x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
       if (x < p.x - 2.2 && Math.abs(z - p.z) < 1.6) continue;
-      b.add(roundCyl(0.32 + R() * 0.15, 0.03, 0.012, 16), R() > 0.5 ? C.leaf : '#9CC98A', { pos: [x, p.water + 0.005, z], rot: [0, R() * 6, 0] }, { outline: false });
+      b.add(roundCyl(0.28 + R() * 0.1, 0.03, 0.012, 16), R() > 0.5 ? C.leaf : '#9CC98A', { pos: [x, p.water + 0.005, z], rot: [0, R() * 6, 0] }, { outline: false });
       if (R() > 0.6) {
         b.add(sphere(0.11, 10, 8), C.pink, { pos: [x + 0.05, p.water + 0.08, z], scale: [1, 0.8, 1] });
         b.add(sphere(0.05, 8, 6), C.butter, { pos: [x + 0.05, p.water + 0.15, z] }, { outline: false });
@@ -617,7 +617,7 @@ export function buildWorld(scene, fx) {
   }
   {
     const b = B('trees');
-    const inner = [[-14, 13, 1.1], [-3, 16, 1], [-15.5, 17, 1.2, 'blossom'], [-2, 11.5, 0.9, 'blossom'], [15, 15, 1.1], [16, 2, 1, 'pine'],
+    const inner = [[-14, 13, 1.1], [-3, 16, 1], [-15.5, 17, 1.2, 'blossom'], [-3.6, 15.4, 0.9, 'blossom'], [15, 15, 1.1], [16, 2, 1, 'pine'],
       [-15.5, 1.5, 1.1, 'pine'], [5, -16.5, 1.1], [16.5, -15.5, 1.2, 'blossom'], [-6.5, -16.5, 1.1, 'pine'], [6.5, 16.5, 1], [-9, -8.6, 0.9, 'blossom'], [15.5, -3.5, 0.9]];
     for (const [x, z, s, k] of inner) { tree(b, x, z, s, k); circle(x, z, 0.32 * s); }
     for (let i = 0; i < 72; i++) {
@@ -957,9 +957,9 @@ function buildLife(scene, fx) {
     update(dt, t, roomSec, env) {
       ducks.forEach((d, i) => {
         const a = roomSec * 0.12 + d.ph;
-        const x = p.x + 1.2 + Math.cos(a) * 1.9, z = p.z + Math.sin(a) * 2.6;
+        const x = p.x + 1.1 + Math.cos(a) * 1.6, z = p.z + Math.sin(a) * 2.2;
         d.g.position.set(x, p.water + Math.sin(t * 2 + i) * 0.015 - 0.02, z);
-        d.g.rotation.y = Math.atan2(-Math.sin(a) * 1.9, Math.cos(a) * 2.6);
+        d.g.rotation.y = Math.atan2(-Math.sin(a) * 1.6, Math.cos(a) * 2.2);
         d.g.rotation.z = Math.sin(t * 2.2 + i) * 0.05;
       });
       boats.forEach((b, i) => {

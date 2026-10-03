@@ -173,7 +173,8 @@ export async function copyText(text) {
 export function renderLobby(game) {
   const list = $('lobby-list');
   const players = [...game.players.values()];
-  $('lobby-code').textContent = game.net.room || 'Solo';
+  $('lobby-title').textContent = game.net.room ? 'Room ' : 'Wandering solo';
+  $('lobby-code').textContent = game.net.room || '';
   list.replaceChildren(...players.map((p) => {
     const li = document.createElement('li');
     const sw = document.createElement('span');

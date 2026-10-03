@@ -70,19 +70,21 @@ const vert = /* glsl */`
     vColor = pcolor; vTile = tile;
   }`;
 const frag = /* glsl */`
-  uniform sampler2D uMap; uniform float uAlpha;
+  uniform sampler2D uMap; uniform float uAlpha; uniform vec3 uTint;
   varying vec4 vColor; varying float vTile;
   void main() {
     float col = mod(vTile, 4.0), row = floor(vTile / 4.0);
     vec2 uv = vec2((col + 0.04 + gl_PointCoord.x * 0.92) / 4.0, 1.0 - (row + 0.04 + gl_PointCoord.y * 0.92) / 2.0);
     vec4 t = texture2D(uMap, uv);
-    gl_FragColor = vec4(vColor.rgb * t.rgb, vColor.a * t.a * uAlpha);
+    // smoke and dust pick up the evening light; little icons only a touch
+    vec3 tint = mix(vec3(1.0), uTint, abs(vTile - 4.0) < 0.5 ? 1.0 : 0.3);
+    gl_FragColor = vec4(vColor.rgb * t.rgb * tint, vColor.a * t.a * uAlpha);
     if (gl_FragColor.a < 0.01) discard;
     #include <colorspace_fragment>
   }`;
 
 class Cloud {
-  constructor(scene, atlas, max, blending, scaleU) {
+  constructor(scene, atlas, max, blending, scaleU, tintU) {
     this.max = max;
     this.list = [];
     const g = new THREE.BufferGeometry();
@@ -94,7 +96,7 @@ class Cloud {
     g.setAttribute('tile', new THREE.BufferAttribute(this.tile, 1).setUsage(THREE.DynamicDrawUsage));
     this.geo = g;
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: atlas.tex }, uScale: scaleU, uAlpha: { value: 1 } },
+      uniforms: { uMap: { value: atlas.tex }, uScale: scaleU, uAlpha: { value: 1 }, uTint: tintU },
       vertexShader: vert, fragmentShader: frag,
       transparent: true, depthWrite: false, blending,
     });
@@ -146,8 +148,9 @@ export class Effects {
   constructor(scene) {
     this.scaleU = { value: 600 };
     this.atlas = makeAtlas();
-    this.add = new Cloud(scene, this.atlas, 700, THREE.AdditiveBlending, this.scaleU);
-    this.norm = new Cloud(scene, this.atlas, 700, THREE.NormalBlending, this.scaleU);
+    this.tintU = { value: new THREE.Color(1, 1, 1) };
+    this.add = new Cloud(scene, this.atlas, 700, THREE.AdditiveBlending, this.scaleU, { value: new THREE.Color(1, 1, 1) });
+    this.norm = new Cloud(scene, this.atlas, 700, THREE.NormalBlending, this.scaleU, this.tintU);
     this.t = 0;
     document.fonts?.ready.then(() => {
       // redraw the "z" now that Fredoka is loaded
@@ -156,6 +159,8 @@ export class Effects {
       this.atlas.tex.needsUpdate = true;
     });
   }
+
+  setNight(k) { this.tintU.value.setRGB(1 - 0.5 * k, 1 - 0.52 * k, 1 - 0.38 * k); }
 
   resize(heightPx, fov) {
     this.scaleU.value = heightPx / (2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2));
@@ -250,7 +255,7 @@ export class Effects {
     g.setAttribute('size', new THREE.BufferAttribute(size, 1));
     g.setAttribute('tile', new THREE.BufferAttribute(tile, 1));
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: this.atlas.tex }, uScale: this.scaleU, uAlpha: { value: 0 } },
+      uniforms: { uMap: { value: this.atlas.tex }, uScale: this.scaleU, uAlpha: { value: 0 }, uTint: { value: new THREE.Color(1, 1, 1) } },
       vertexShader: vert, fragmentShader: frag, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     });
     const pts = new THREE.Points(g, mat);
