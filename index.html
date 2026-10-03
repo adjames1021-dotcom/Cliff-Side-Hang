@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Hillside Hangout</title>
+  <meta name="description" content="A cozy little toon village on a sea cliff where friends hang out as chibi animals." />
+  <meta name="theme-color" content="#F4A646" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #4B2E1D; --cream: #F8E8C8; --cream2: #FFF3DC; --apricot: #F4A646; --pumpkin: #E8893A;
+      --pink: #F7B9C4; --sage: #AFCB9C; --blue: #AFD6EC; --butter: #FFE08A;
+      --font: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #F8E8C8; font-family: var(--font); color: var(--ink); }
+    body { overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+    canvas#game { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; touch-action: none; outline: none; }
+    .hidden { display: none !important; }
+    input { font-family: var(--font); font-size: 16px; color: var(--ink); user-select: text; -webkit-user-select: text; }
+
+    /* ---------- buttons ---------- */
+    .btn {
+      font-family: var(--font); font-weight: 600; font-size: 17px; color: var(--ink);
+      background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px;
+      padding: 9px 20px; box-shadow: 0 4px 0 var(--ink); cursor: pointer;
+      transition: transform .06s, box-shadow .06s; white-space: nowrap;
+    }
+    .btn:hover { background: #FFF8EA; }
+    .btn:active, .btn.pressed { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+    .btn.primary { background: var(--apricot); }
+    .btn.primary:hover { background: #F6B05A; }
+    .btn.big { font-size: 26px; padding: 12px 46px; }
+    .btn.small { font-size: 14px; padding: 6px 14px; box-shadow: 0 3px 0 var(--ink); }
+    .btn.ghost { background: transparent; box-shadow: none; border-style: dashed; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .icon-btn {
+      width: 46px; height: 46px; border-radius: 50%; font-size: 21px; line-height: 1;
+      background: var(--cream2); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
+      cursor: pointer; display: grid; place-items: center; padding: 0;
+    }
+    .icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+    .card {
+      background: var(--cream2); border: 3px solid var(--ink); border-radius: 26px;
+      box-shadow: 0 6px 0 var(--ink); padding: 18px 20px;
+    }
+    h1, h2, h3 { margin: 0; font-weight: 700; }
+    .small { font-size: 13px; opacity: .85; }
+
+    /* ---------- title ---------- */
+    .screen { position: fixed; inset: 0; z-index: 10; }
+    #title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; pointer-events: none; text-align: center; padding: 16px; }
+    #title > * { pointer-events: auto; }
+    .logo h1 {
+      font-size: clamp(54px, 11vw, 104px); line-height: .92; color: var(--cream2); letter-spacing: 1px;
+      -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill;
+      text-shadow: 0 7px 0 var(--ink);
+    }
+    .logo h1 span { color: var(--butter); }
+    .logo p { margin: 14px 0 0; font-size: clamp(16px, 2.6vw, 21px); font-weight: 500; background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 18px; display: inline-block; box-shadow: 0 4px 0 var(--ink); }
+    #title-hint { font-size: 15px; font-weight: 500; background: rgba(255,243,220,.85); border-radius: 999px; padding: 4px 14px; margin: 0; }
+    #title-hint:empty { display: none; }
+
+    /* ---------- creator ---------- */
+    #creator { pointer-events: none; display: flex; align-items: center; padding: 16px; }
+    .creator-card { pointer-events: auto; width: min(420px, 100%); max-height: calc(100dvh - 32px); overflow: auto; margin-left: max(16px, 4vw); }
+    .creator-card h2 { font-size: 26px; margin-bottom: 10px; }
+    .field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 14px; }
+    .field input, .join-row input, #server-input, #chat-input {
+      border: 3px solid var(--ink); border-radius: 14px; padding: 8px 12px; background: #fff; outline: none;
+    }
+    .field input:focus, .join-row input:focus, #chat-input:focus { border-color: var(--pumpkin); }
+    .row-label { font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
+    .row-label small { font-weight: 500; opacity: .7; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip {
+      font-family: var(--font); font-weight: 600; font-size: 15px; color: var(--ink); background: #fff;
+      border: 3px solid var(--ink); border-radius: 999px; padding: 5px 12px; cursor: pointer; box-shadow: 0 3px 0 var(--ink);
+    }
+    .chip.on { background: var(--butter); }
+    .chip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sw { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--ink); cursor: pointer; box-shadow: 0 3px 0 var(--ink); padding: 0; }
+    .sw.on { outline: 3px solid var(--pumpkin); outline-offset: 2px; }
+    .join-box { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+    .join-row { display: flex; gap: 8px; }
+    .join-row input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 4px; font-weight: 600; text-align: center; }
+    #server-line { margin: 0; }
+    #server-line a { color: var(--pumpkin); font-weight: 600; }
+    #server-box { display: flex; gap: 6px; }
+    #server-input { flex: 1; min-width: 0; font-size: 14px; }
+    .msg { margin: 0; font-weight: 600; color: #C0563A; min-height: 0; }
+    .msg:empty { display: none; }
+
+    /* ---------- HUD ---------- */
+    #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+    #hud > * { pointer-events: auto; }
+    .pill {
+      position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px;
+      font-family: var(--font); font-weight: 600; font-size: 16px; color: var(--ink);
+      background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px; padding: 7px 16px;
+      box-shadow: 0 4px 0 var(--ink); cursor: pointer; display: flex; align-items: center; gap: 8px;
+    }
+    .pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sage); border: 2px solid var(--ink); }
+    .pill .dot.off { background: #E7A08A; }
+    .top-right { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; display: flex; gap: 8px; }
+    .prompt {
+      position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
+      background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px; padding: 8px 18px;
+      font-weight: 600; font-size: 17px; box-shadow: 0 4px 0 var(--ink); white-space: nowrap; pointer-events: none;
+    }
+    .prompt kbd { background: var(--apricot); border: 2px solid var(--ink); border-radius: 8px; padding: 0 7px; margin-right: 6px; font-family: var(--font); }
+    #chat-log { position: absolute; left: 14px; bottom: 76px; width: min(360px, 70vw); display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+    .chat-line {
+      background: rgba(255,243,220,.92); border: 2px solid var(--ink); border-radius: 14px; padding: 4px 10px;
+      font-size: 15px; font-weight: 500; width: fit-content; max-width: 100%; overflow-wrap: anywhere;
+      transition: opacity 1s; user-select: text;
+    }
+    .chat-line b { font-weight: 700; }
+    .chat-line.sys { background: rgba(255,224,138,.92); font-style: normal; }
+    .chat-line.fade { opacity: 0; }
+    #chat-log.open .chat-line.fade { opacity: 1; }
+    #chat-form { position: absolute; left: 14px; bottom: 16px; display: flex; gap: 8px; width: min(440px, calc(100vw - 28px)); }
+    #chat-input { flex: 1; min-width: 0; }
+
+    /* name tags + speech bubbles */
+    #labels { position: fixed; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+    .tag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; will-change: transform; }
+    .tag .name {
+      font-weight: 600; font-size: 14px; color: var(--ink); background: rgba(255,243,220,.92);
+      border: 2px solid var(--ink); border-radius: 999px; padding: 1px 10px; white-space: nowrap;
+    }
+    .tag.me .name { background: rgba(255,224,138,.95); }
+    .bubble {
+      position: relative; margin-bottom: 10px; max-width: 230px; width: max-content; background: #fff; border: 3px solid var(--ink);
+      border-radius: 18px; padding: 6px 12px; font-size: 15px; font-weight: 500; text-align: center; overflow-wrap: anywhere;
+      box-shadow: 0 3px 0 var(--ink); animation: pop .18s ease-out;
+    }
+    .bubble::after {
+      content: ""; position: absolute; left: 50%; bottom: -11px; width: 14px; height: 14px; background: #fff;
+      border-right: 3px solid var(--ink); border-bottom: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg); border-radius: 0 0 4px 0;
+    }
+    @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .ping-tag { position: absolute; left: 0; top: 0; font-weight: 600; font-size: 13px; background: var(--butter); border: 2px solid var(--ink); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+
+    /* emote wheel */
+    #wheel { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(75,46,29,.12); }
+    .wheel-ring { position: relative; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,243,220,.9); border: 3px solid var(--ink); box-shadow: 0 6px 0 var(--ink); }
+    .wheel-item {
+      position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%;
+      background: #fff; border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--font);
+      font-size: 28px; line-height: 1; color: var(--ink); padding: 0;
+    }
+    .wheel-item span { font-size: 11px; font-weight: 600; margin-top: 2px; }
+    .wheel-item small { position: absolute; top: -6px; right: -4px; font-size: 11px; background: var(--butter); border: 2px solid var(--ink); border-radius: 999px; padding: 0 5px; }
+    .wheel-item:hover { background: var(--butter); }
+    .wheel-center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: 600; font-size: 14px; text-align: center; }
+
+    /* lobby + overlays */
+    #lobby { position: fixed; top: 70px; left: 14px; z-index: 15; width: min(300px, calc(100vw - 28px)); }
+    #lobby h3 { font-size: 20px; margin-bottom: 8px; }
+    #lobby ul { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    #lobby li { display: flex; align-items: center; gap: 8px; font-weight: 500; background: #fff; border: 2px solid var(--ink); border-radius: 14px; padding: 4px 10px; }
+    #lobby li .sw { width: 18px; height: 18px; border-width: 2px; box-shadow: none; }
+    #lobby li .you { margin-left: auto; font-size: 12px; background: var(--butter); border-radius: 999px; padding: 0 6px; border: 2px solid var(--ink); }
+    .overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(75,46,29,.28); padding: 16px; }
+    .overlay .card { width: min(380px, 100%); display: flex; flex-direction: column; gap: 11px; max-height: calc(100dvh - 32px); overflow: auto; }
+    .overlay h2 { font-size: 26px; text-align: center; margin-bottom: 4px; }
+    #book .card { width: min(560px, 100%); }
+    #book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .fish { background: #fff; border: 2px solid var(--ink); border-radius: 16px; padding: 8px; text-align: center; font-size: 13px; font-weight: 500; }
+    .fish .ico { font-size: 34px; line-height: 1.1; }
+    .fish.unknown .ico { filter: brightness(0) opacity(.25); }
+    .fish b { display: block; font-size: 14px; }
+    .fish .stars { color: var(--pumpkin); letter-spacing: 1px; }
+    #book-sum { text-align: center; font-weight: 600; margin: 0; }
+
+    /* activity UI */
+    #pads { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 7px; }
+    .pad {
+      width: 52px; height: 62px; border-radius: 16px; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
+      font-family: var(--font); font-weight: 700; font-size: 18px; color: var(--ink); cursor: pointer; padding: 0;
+    }
+    .pad.hit { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); filter: brightness(1.08); }
+    #meter { position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%); width: min(360px, 86vw); text-align: center; }
+    .meter-label { font-weight: 600; margin-bottom: 6px; background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px; padding: 4px 12px; display: inline-block; }
+    .meter-bar { position: relative; height: 30px; border: 3px solid var(--ink); border-radius: 999px; overflow: hidden; display: flex; box-shadow: 0 4px 0 var(--ink); background: #fff; }
+    .meter-bar div.z { height: 100%; }
+    #meter-needle { position: absolute; top: -2px; bottom: -2px; width: 8px; margin-left: -4px; background: var(--ink); border-radius: 4px; left: 0; }
+    #catch {
+      position: fixed; left: 50%; top: 22%; transform: translateX(-50%); z-index: 12; text-align: center; pointer-events: none;
+      background: var(--cream2); border: 3px solid var(--ink); border-radius: 22px; box-shadow: 0 6px 0 var(--ink); padding: 12px 22px; animation: pop .25s ease-out;
+    }
+    #catch .ico { font-size: 48px; }
+    #catch b { font-size: 21px; display: block; }
+    #catch .new { display: inline-block; background: var(--butter); border: 2px solid var(--ink); border-radius: 999px; padding: 0 8px; font-weight: 600; font-size: 13px; margin-top: 4px; }
+    #scope { position: fixed; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 34vmin, var(--ink) 34.4vmin); }
+    #scope::after { content: "drag to look · Esc to step back"; position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); color: var(--cream2); font-weight: 600; }
+    #toasts { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); z-index: 25; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+    .toast { background: var(--cream2); border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; font-weight: 600; box-shadow: 0 4px 0 var(--ink); animation: pop .2s ease-out; transition: opacity .5s; max-width: 90vw; text-align: center; }
+    .toast.out { opacity: 0; }
+
+    /* touch controls */
+    #touch { position: absolute; inset: 0; pointer-events: none; }
+    #touch > * { pointer-events: auto; }
+    #stick-zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; pointer-events: auto; }
+    #stick-base { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255,243,220,.5); border: 3px solid rgba(75,46,29,.6); display: none; }
+    #stick-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: var(--cream2); border: 3px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+    .touch-buttons { position: absolute; right: 14px; bottom: max(18px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 64px); gap: 12px; }
+    .round { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--ink); background: var(--cream2); box-shadow: 0 4px 0 var(--ink); font-family: var(--font); font-weight: 700; font-size: 24px; color: var(--ink); padding: 0; touch-action: none; }
+    .round.primary { background: var(--apricot); }
+    .round.pressed { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+    body.touch #chat-log { bottom: 190px; }
+    body.touch .prompt { bottom: 186px; }
+    body.touch #pads { bottom: 170px; }
+    body.touch #meter { bottom: 230px; }
+
+    #loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--cream); font-size: 24px; font-weight: 600; transition: opacity .6s; }
+    #loading.done { opacity: 0; pointer-events: none; }
+    #loading .err { font-size: 16px; max-width: 420px; text-align: center; color: #C0563A; }
+
+    @media (max-width: 700px) {
+      #creator { align-items: flex-end; }
+      .creator-card { margin: 0 auto; max-height: 62dvh; }
+      .creator-card h2 { font-size: 21px; }
+      .btn.big { font-size: 22px; padding: 10px 38px; }
+      .icon-btn { width: 40px; height: 40px; font-size: 18px; }
+      .top-right { gap: 6px; }
+      .pill { font-size: 14px; padding: 6px 12px; }
+      .pad { width: 38px; height: 52px; font-size: 15px; border-radius: 12px; }
+      #pads { gap: 4px; }
+      .wheel-ring { width: 270px; height: 270px; }
+      .wheel-item { width: 66px; height: 66px; margin: -33px 0 0 -33px; font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" tabindex="0"></canvas>
+  <div id="labels"></div>
+
+  <section id="title" class="screen">
+    <div class="logo">
+      <h1>Hillside<br /><span>Hangout</span></h1>
+      <p>a cozy little cliffside village for you and your friends</p>
+    </div>
+    <button id="btn-play" class="btn primary big">Play</button>
+    <p id="title-hint"></p>
+  </section>
+
+  <section id="creator" class="screen hidden">
+    <div class="card creator-card">
+      <h2 id="creator-title">Make your critter</h2>
+      <label class="field"><span>Name</span><input id="name" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name" /></label>
+      <div class="row-label">Animal</div>
+      <div id="animals" class="chips"></div>
+      <div class="row-label">Fur</div>
+      <div id="furs" class="swatches"></div>
+      <div class="row-label">Outfit</div>
+      <div id="outfits" class="swatches"></div>
+      <div class="row-label">Accessories <small>(up to two)</small></div>
+      <div id="accs" class="chips"></div>
+      <div class="join-box" id="join-box">
+        <button id="btn-create" class="btn primary">Create a room</button>
+        <div class="join-row">
+          <input id="code" maxlength="4" autocomplete="off" spellcheck="false" placeholder="CODE" />
+          <button id="btn-join" class="btn">Join</button>
+        </div>
+        <button id="btn-solo" class="btn ghost">Wander solo</button>
+        <p id="server-line" class="small">Server: <span id="server-name">checking…</span> · <a href="#" id="server-edit">change</a></p>
+        <div id="server-box" class="hidden">
+          <input id="server-input" autocomplete="off" spellcheck="false" placeholder="https://hillside-hangout.you.workers.dev" />
+          <button id="server-save" class="btn small">Save</button>
+        </div>
+        <p id="creator-msg" class="msg"></p>
+      </div>
+      <div class="join-box hidden" id="edit-box">
+        <button id="btn-done" class="btn primary">Looks good!</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="hud" class="hidden">
+    <button id="room-pill" class="pill" title="Who's here"><span class="dot" id="net-dot"></span><span id="room-code">Solo</span><span id="room-count"></span></button>
+    <div class="top-right">
+      <button class="icon-btn" id="btn-emote" title="Emotes (Q)">😊</button>
+      <button class="icon-btn" id="btn-chat" title="Chat (Enter)">💬</button>
+      <button class="icon-btn" id="btn-book" title="Fish book (B)">📖</button>
+      <button class="icon-btn" id="btn-sound" title="Sound on/off (M)">🔊</button>
+      <button class="icon-btn" id="btn-menu" title="Menu (Esc)">☰</button>
+    </div>
+    <div id="prompt" class="prompt hidden"></div>
+    <div id="chat-log"></div>
+    <form id="chat-form" class="hidden" autocomplete="off">
+      <input id="chat-input" maxlength="140" placeholder="Say something nice…" />
+      <button class="btn small primary" type="submit">Send</button>
+    </form>
+    <div id="pads" class="hidden"></div>
+    <div id="meter" class="hidden">
+      <div class="meter-label" id="meter-label">Toasting… press E when it's golden!</div>
+      <div class="meter-bar">
+        <div class="z" style="width:38%;background:#FFF8EE"></div>
+        <div class="z" style="width:22%;background:#F6D8A0"></div>
+        <div class="z" style="width:18%;background:#F4A646"></div>
+        <div class="z" style="width:22%;background:#8E5B3E"></div>
+        <div id="meter-needle"></div>
+      </div>
+    </div>
+    <div id="touch" class="hidden">
+      <div id="stick-zone"><div id="stick-base"><div id="stick-knob"></div></div></div>
+      <div class="touch-buttons">
+        <button id="t-emote" class="round" aria-label="Emotes">😊</button>
+        <button id="t-chat" class="round" aria-label="Chat">💬</button>
+        <button id="t-jump" class="round" aria-label="Jump">⤒</button>
+        <button id="t-act" class="round primary" aria-label="Action">E</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="wheel" class="hidden"></div>
+
+  <div id="lobby" class="card hidden">
+    <h3>Room <span id="lobby-code"></span></h3>
+    <ul id="lobby-list"></ul>
+    <button id="btn-invite" class="btn primary small">Copy invite link</button>
+    <p class="small" id="lobby-status"></p>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="card">
+      <h2>Taking a breather</h2>
+      <button class="btn primary" id="p-resume">Back to the village</button>
+      <button class="btn" id="p-look">Change my look</button>
+      <button class="btn" id="p-invite">Copy invite link</button>
+      <button class="btn" id="p-book">Fish book</button>
+      <button class="btn" id="p-sound">Sound: on</button>
+      <button class="btn" id="p-leave">Leave room</button>
+      <p class="small" style="text-align:center;margin:0">WASD/arrows walk · Shift run · Space hop · E use · Q emotes · Enter chat · G ping · drag to look · wheel to zoom</p>
+    </div>
+  </div>
+
+  <div id="book" class="overlay hidden">
+    <div class="card">
+      <h2>Fish book</h2>
+      <p id="book-sum"></p>
+      <div id="book-grid"></div>
+      <button class="btn" id="book-close">Close</button>
+    </div>
+  </div>
+
+  <div id="catch" class="hidden"></div>
+  <div id="scope" class="hidden"></div>
+  <div id="toasts"></div>
+  <div id="loading"><div>Waking up the village…</div></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

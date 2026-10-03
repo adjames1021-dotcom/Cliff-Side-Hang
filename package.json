@@ -1,10 +1,10 @@
 {
-  "name": "cliff-side-hang",
-  "version": "0.1.0",
+  "name": "hillside-hangout",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --persist-to /tmp/hangout-rooms",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
