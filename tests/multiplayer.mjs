@@ -128,6 +128,24 @@ check(balls.every((b) => b.owner === aId), 'everyone agrees Alice last touched t
 // --- campfire for a late joiner ---
 await A.evaluate(() => window.__hh.net.send({ t: 'fire', lit: true }));
 check(await until(B, () => window.__hh.fireInfo.lit), 'Bob sees the campfire lit');
+
+// --- sailing: Alice takes a boat out, Bob sees it go and can't take the same helm ---
+await A.evaluate(() => { const g = window.__hh; g.me.pos.set(-28.8, -7, 12.4); g.sendMove(true); g.requestSit('boat-0'); });
+check(await until(B, (id) => window.__hh.players.get(id)?.seat === 'boat-0', aId), 'Bob sees Alice take the helm');
+const boatAt = (page) => page.evaluate(() => { const b = window.__hh.activities.find((a) => a.boats).boats[0]; return [b.x, b.z]; });
+const bStart = await boatAt(B);
+await A.evaluate(() => { window.__hh.autoMove = { x: 0, z: 1 }; });
+await sleep(3500);
+await A.evaluate(() => { window.__hh.autoMove = null; });
+await sleep(800);
+const [aBoat, bBoat] = [await boatAt(A), await boatAt(B)];
+check(Math.hypot(bBoat[0] - bStart[0], bBoat[1] - bStart[1]) > 3, 'Bob sees the boat sail away');
+check(Math.hypot(aBoat[0] - bBoat[0], aBoat[1] - bBoat[1]) < 2.5, `both see the boat in the same place (off by ${Math.hypot(aBoat[0] - bBoat[0], aBoat[1] - bBoat[1]).toFixed(2)} m)`);
+await B.evaluate(() => window.__hh.net.send({ t: 'sit', seat: 'boat-0' }));
+await sleep(600);
+check(await A.evaluate(() => window.__hh.me.seat === 'boat-0'), 'nobody can grab the helm from Alice');
+await A.evaluate(() => window.__hh.standUp());
+check(await until(B, () => { const b = window.__hh.activities.find((a) => a.boats).boats[0]; return Math.hypot(b.x - b.def.home.x, b.z - b.def.home.z) < 0.5; }), 'the boat goes home to the dock when Alice steps off');
 const D = await openPage(ctxD, `/?norender#room=${code}`);
 check(await until(D, () => window.__hh.net.status === 'online'), 'Dee joins late');
 check(await until(D, () => window.__hh.fireInfo.lit && window.__hh.shared.fire.by === 'Alice', null, 10000), 'late joiner sees the fire already burning (lit by Alice)');
@@ -142,7 +160,7 @@ const fillers = [];
 for (let i = 0; i < 6; i++) {
   const ws = new WebSocket(BASE.replace('http', 'ws') + `/room/${code}`);
   await new Promise((res) => { ws.onopen = res; });
-  const got = new Promise((res) => { ws.onmessage = (e) => res(JSON.parse(e.data)); });
+  const got = new Promise((res) => { ws.onmessage = (e) => { try { res(JSON.parse(e.data)); } catch {} }; }); // ignore plain "pong" keepalive replies
   ws.send(JSON.stringify({ t: 'hello', cid: `filler-${i}-${Date.now()}`, name: `Bot${i}`, avatar: { animal: 'bear' } }));
   const m = await got;
   ws.keepalive = setInterval(() => ws.send('ping'), 10000); // like a real client

@@ -142,6 +142,7 @@ export function buildWorld(scene, fx) {
   const collidersNear = (x, z) => cgrid.get(gkey(Math.floor(x / CG), Math.floor(z / CG))) || NONE;
   const circle = (x, z, r) => { const c = { c: true, x, z, r }; colliders.push(c); gridAdd(c, x - r, z - r, x + r, z + r); };
   const box = (x0, z0, x1, z1) => { const c = { c: false, x0, z0, x1, z1 }; colliders.push(c); gridAdd(c, x0, z0, x1, z1); };
+  const camBoxes = []; // solid things cameras shouldn't end up inside
   const HOMES = [[-8, -25, 0], [5, -26.5, 0.2], [15, -24.5, -0.3], [25.5, -9, -1.4], [26, 5, -1.7], [24.5, 15, -2.1], [-6, 25.5, Math.PI], [9, 26, Math.PI + 0.3]];
   const nearHome = (x, z, r) => HOMES.some(([hx, hz]) => Math.hypot(x - hx, z - hz) < r);
 
@@ -980,6 +981,7 @@ export function buildWorld(scene, fx) {
       const [cx, cz] = toWorld(x, z, yaw, 1.0, -0.5);
       smokeSpots.push(new THREE.Vector3(cx, y + 4.5, cz));
       for (const [lx, lz] of [[-1, -0.9], [1, -0.9], [-1, 0.9], [1, 0.9]]) { const [px, pz] = toWorld(x, z, yaw, lx, lz); circle(px, pz, 1.05); }
+      camBoxes.push({ x0: x - 2.2, z0: z - 2.2, x1: x + 2.2, z1: z + 2.2, h: y + 4.2 });
       W.group({ pos: [x, y, z], rot: [0, yaw, 0] }, (g) => {
         g.add(rbox(0.68, 0.68, 0.02, 0.01), C.butter, { pos: [-0.8, 1.75, 1.555] });
         g.add(rbox(0.68, 0.68, 0.02, 0.01), C.butter, { pos: [1.755, 1.8, 0.4], rot: [0, Math.PI / 2, 0] });
@@ -1004,6 +1006,11 @@ export function buildWorld(scene, fx) {
   const wctx = { scene, fol, terrainHeight, circle, seats, lampGlows, smokeSpots, G, windows: W, trees: woodsPlan, time: wildTime, ...wild };
   buildWoods(wctx);
   buildCove(wctx);
+  {
+    const cb = WILD.cabin, cy = terrainHeight(cb.x, cb.z);
+    camBoxes.push({ x0: cb.x - 2.6, z0: cb.z - 2.6, x1: cb.x + 2.6, z1: cb.z + 2.6, h: cy + 4.0 });
+    camBoxes.push({ x0: -22.8, z0: 16.6, x1: -20.0, z1: 20.2, h: beachHeight(-21.4, 18.4) + 3.0 });
+  }
 
   // ---------- assemble static groups ----------
   const noShadow = new Set(['cobbles', 'flowers', 'fence']);
@@ -1069,7 +1076,7 @@ export function buildWorld(scene, fx) {
   let mistT = 0;
   const fp = new THREE.Vector3();
   const world = {
-    L, colliders, seats, groundHeight, terrainHeight, isWater, inDock, lampGlows, smokeSpots, walkable, collidersNear,
+    L, colliders, seats, groundHeight, terrainHeight, isWater, inDock, lampGlows, smokeSpots, walkable, collidersNear, camBoxes,
     wind, boats: life.boats, lampPosts, blossoms, waterMeshes, windowMat, foliage: fol, wild: WILD, sailable,
     extraLamps: wild.lamps, fireflySpots: wild.fireflySpots,
     grassDensity: (x, z) => grassDensity(x, z),
@@ -1249,8 +1256,8 @@ function buildLife(scene, fx) {
         b.g.position.set(b.x, seaHeight(b.x, z, t, o) - 0.05, z);
         b.g.rotation.y = b.dir > 0 ? 0 : Math.PI;
         b.boat.heel.rotation.set(o.slopeZ * 0.4 * b.dir, 0, -0.12 - o.slopeX * 0.3);
-        // wind from the north-west: boats heading north are close-hauled, heading south they run free
-        b.boat.setSails(b.dir > 0 ? 0.95 : 2.5, 0.7, dt);
+        // the breeze is from the west-north-west: both ways along the coast are a reach
+        b.boat.setSails(b.dir > 0 ? 1.91 : -1.23, 0.7, dt);
       });
       flies.forEach((f, i) => {
         const tt = t * f.sp + f.ph;

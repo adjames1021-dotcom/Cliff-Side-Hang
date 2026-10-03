@@ -383,6 +383,7 @@ function updateMe(dt) {
 const camBlockers = [
   { x0: L.cafe.x0, z0: L.cafe.z0, x1: L.cafe.x1, z1: L.cafe.z1, h: 6.8 },
   { x0: -4, z0: L.stage.z0 - 0.3, x1: 4, z1: L.stage.z0 + 0.45, h: 4.2 },
+  ...world.camBoxes,
 ];
 const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), camDir = new THREE.Vector3();
 const eye = { y: null, pos: new THREE.Vector3() };

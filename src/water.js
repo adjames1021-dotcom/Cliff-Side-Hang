@@ -109,7 +109,8 @@ export function makeWaterMaterial({ waves = SEA_WAVES, deep = '#0b3f57', shallow
         // surf running up the sand in the cove
         if (uCove > 0.5 && vWPos.z > 4.2 && vWPos.z < 21.5) {
           float sx = -25.43 - 1.8 * sin(3.14159 * (vWPos.z - 4.2) / 17.3);
-          near = max(near, (1.0 - smoothstep(0.0, 4.5, sx - vWPos.x)) * smoothstep(4.2, 6.2, vWPos.z) * smoothstep(21.5, 19.5, vWPos.z));
+          float swash = sin(uTime * 0.9 + vWPos.z * 0.35) * 0.6;
+          near = max(near, 0.82 * (1.0 - smoothstep(0.0, 2.4, sx + swash - vWPos.x)) * smoothstep(4.2, 6.2, vWPos.z) * smoothstep(21.5, 19.5, vWPos.z));
         }
         for (int i = 0; i < 4; i++) {
           if (uStacks[i].z > 0.0) {

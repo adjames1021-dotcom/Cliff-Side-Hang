@@ -49,11 +49,18 @@ export class Grass {
     const N = size;
     const [x0, z0, w, d] = rect;
     const data = new Uint16Array(N * N * 4);
+    const hs = new Float32Array(N * N);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) hs[j * N + i] = height(x0 + ((i + 0.5) / N) * w, z0 + ((j + 0.5) / N) * d);
+    const dx = w / N, dz = d / N;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
       const x = x0 + ((i + 0.5) / N) * w, z = z0 + ((j + 0.5) / N) * d;
       const k = (j * N + i) * 4;
-      data[k] = THREE.DataUtils.toHalfFloat(height(x, z));
-      data[k + 1] = THREE.DataUtils.toHalfFloat(density(x, z));
+      // nothing grows on steep cuts (the cliff steps, the creek gorge, the mountain sides)
+      const sx = (hs[j * N + Math.min(N - 1, i + 1)] - hs[j * N + Math.max(0, i - 1)]) / (2 * dx);
+      const sz = (hs[Math.min(N - 1, j + 1) * N + i] - hs[Math.max(0, j - 1) * N + i]) / (2 * dz);
+      const steep = Math.hypot(sx, sz) > 1.0;
+      data[k] = THREE.DataUtils.toHalfFloat(hs[j * N + i]);
+      data[k + 1] = THREE.DataUtils.toHalfFloat(steep ? 0 : density(x, z));
       data[k + 2] = THREE.DataUtils.toHalfFloat(0.5 + 0.5 * Math.sin(x * 0.31 + Math.sin(z * 0.23) * 2) * Math.cos(z * 0.17 - x * 0.05));
       data[k + 3] = THREE.DataUtils.toHalfFloat(1);
     }

@@ -6,8 +6,8 @@ import { seaHeight } from '../water.js';
 import { W } from '../wilds.js';
 import { toast } from '../ui.js';
 
-// The breeze blows from the north-north-west toward the south-south-east.
-const WIND_TO = new THREE.Vector2(0.32, 1).normalize();
+// The breeze comes in off the sea from the west-north-west.
+const WIND_TO = new THREE.Vector2(1, 0.35).normalize();
 const MAX_SPEED = 6.4;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -19,9 +19,10 @@ function polar(off) {
 }
 
 const DEFS = [
-  { name: 'Pippin', hull: '#2F5E8C', band: '#E8893A', home: { x: -31.2, z: W.dock.z + 2.25, yaw: -Math.PI / 2 } },
-  { name: 'Marigold', hull: '#E2B53E', stripe: '#F4F1EA', band: '#3E7CB1', home: { x: -35.6, z: W.dock.z + 2.25, yaw: -Math.PI / 2 } },
-  { name: 'Wren', hull: '#3F6B4F', stripe: '#F4F1EA', band: '#C8434F', home: { x: -33.4, z: W.dock.z - 2.25, yaw: -Math.PI / 2 } },
+  // moored stern-to along the north side of the dock, bows pointing out to sea
+  { name: 'Pippin', hull: '#2F5E8C', band: '#E8893A', home: { x: -28.8, z: W.dock.z - 3.75, yaw: Math.PI } },
+  { name: 'Marigold', hull: '#E2B53E', stripe: '#F4F1EA', band: '#3E7CB1', home: { x: -31.9, z: W.dock.z - 3.75, yaw: Math.PI } },
+  { name: 'Wren', hull: '#3F6B4F', stripe: '#F4F1EA', band: '#C8434F', home: { x: -35.0, z: W.dock.z - 3.75, yaw: Math.PI } },
 ];
 
 export default function sailing(game) {
@@ -49,8 +50,8 @@ export default function sailing(game) {
   function clear(b, x, z, yaw) {
     const fx2 = Math.sin(yaw), fz2 = Math.cos(yaw);
     if (!game.world.sailable(x, z, 1.1)) return false;
-    if (!game.world.sailable(x + fx2 * 2.5, z + fz2 * 2.5, 0.6)) return false;
-    if (!game.world.sailable(x - fx2 * 2.5, z - fz2 * 2.5, 0.6)) return false;
+    if (!game.world.sailable(x + fx2 * 2.5, z + fz2 * 2.5, 0.25)) return false;
+    if (!game.world.sailable(x - fx2 * 2.4, z - fz2 * 2.4, 0.2)) return false;
     // sea stacks and the other boats
     for (const [sx, sz, s] of game.world.L.seaStacks) if (Math.hypot(x - sx, z - sz) < s * 1.15 + 1.6) return false;
     for (const o of boats) if (o !== b && Math.hypot(x - o.x, z - o.z) < 2.6) return false;
@@ -148,7 +149,7 @@ export default function sailing(game) {
         game.cam.dist = Math.max(game.cam.dist, 10);
         game.cam.pitch = Math.max(game.cam.pitch, 0.3);
         game.cam.yaw = b.yaw + Math.PI;
-        toast(`Casting off in the ${b.def.name} — the wind's from the north`, 3000);
+        toast(`Casting off in the ${b.def.name} — the breeze is from the west`, 3000);
         audio.play('whoosh');
       } else if (b) {
         game.cam.dist = Math.max(game.cam.dist, 8);

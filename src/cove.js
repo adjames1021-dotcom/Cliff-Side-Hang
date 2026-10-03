@@ -83,13 +83,19 @@ export function buildCove(ctx) {
         // a rough rock shelf under the walkway, carved out of the cliff
         for (let i = 0; i <= Math.ceil(len / 1.1); i++) {
           const k = i / Math.ceil(len / 1.1), x = ax + (bx - ax) * k, z = az + (bz - az) * k, y = ay + (by - ay) * k;
-          const g = noiseRock(R, 2);
-          b.add(g, STONE[i % 3], { pos: [x + nx * outward * 0.35, y - 0.85, z + nz * outward * 0.35], rot: [R() * 0.3, R() * 6, R() * 0.3], scale: [1.1, 0.85, 0.9] }, { mat: 'rock' });
+          const g = noiseRock(R, 3);
+          b.add(g, STONE[i % 3], { pos: [x + nx * outward * 0.3, y - 1.05, z + nz * outward * 0.3], rot: [R() * 0.3, yaw + (R() - 0.5) * 0.6, R() * 0.3], scale: [0.95, 0.75, 1.3] }, { mat: 'rock' });
         }
-        // stone treads
+        // a solid sloping bed of rock under the flight, then stone treads on it
+        {
+          const a3 = new THREE.Vector3(ax, ay - 0.42, az), b3 = new THREE.Vector3(bx, by - 0.42, bz);
+          const dir = b3.clone().sub(a3), mid = a3.clone().add(b3).multiplyScalar(0.5);
+          const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
+          b.add(rbox(1.5, 0.62, dir.length() + 0.6, 0.12), STONE[2], new THREE.Matrix4().compose(mid.clone().add(new THREE.Vector3(nx * outward * 0.05, 0, nz * outward * 0.05)), q, new THREE.Vector3(1, 1, 1)), { mat: 'rock' });
+        }
         for (let i = 0; i < nSteps; i++) {
           const k = (i + 0.5) / nSteps, x = ax + (bx - ax) * k, z = az + (bz - az) * k, y = ay + (by - ay) * k;
-          b.add(rbox(1.36, 0.16, (len / nSteps) * 1.08, 0.04), STONE[(i * 7) % 3], { pos: [x, y - 0.07, z], rot: [0, yaw + (R() - 0.5) * 0.04, 0] }, { mat: 'stone' });
+          b.add(rbox(1.4, 0.2, (len / nSteps) * 1.35, 0.035), STONE[(i * 7) % 3], { pos: [x, y - 0.1, z], rot: [0, yaw + (R() - 0.5) * 0.03, 0] }, { mat: 'stone' });
         }
       } else {
         // timber stair on posts down onto the sand
@@ -165,21 +171,26 @@ export function buildCove(ctx) {
       b.add(rbox(0.1, 0.14, d.hw * 2 + 0.3, 0.02), '#5B4130', { pos: [x, d.y - 0.32, d.z] }, { mat: 'wood' });
     }
     // bollards + cleats where the boats tie up
-    for (const x of [-27.5, -31.5, -35.5]) for (const s of [-1, 1]) {
+    for (const x of [-28.1, -29.5, -31.2, -32.6, -34.3, -35.7]) for (const s of [-1]) {
       const z = d.z + s * (d.hw - 0.15);
       b.add(roundCyl(0.1, 0.32, 0.04, 12), '#2B2826', { pos: [x, d.y, z] }, { mat: 'metal' });
       b.add(rbox(0.3, 0.05, 0.08, 0.02), '#2B2826', { pos: [x, d.y + 0.34, z] }, { mat: 'metal' });
       circle(x, z, 0.12);
     }
     // lanterns on posts
-    for (const x of [-24.6, -30, -36.4]) {
-      const z = d.z - d.hw + 0.1;
+    for (const x of [-24.6, -30.4, -36.6]) {
+      const z = d.z + d.hw - 0.1;
       b.add(rbox(0.12, 1.7, 0.12, 0.02), POST, { pos: [x, d.y + 0.85, z] }, { mat: 'wood' });
       b.add(rbox(0.5, 0.06, 0.06, 0.02), POST, { pos: [x, d.y + 1.68, z + 0.2], rot: [0, Math.PI / 2, 0] }, { mat: 'wood' });
-      b.add(lathe([[0, 0], [0.11, 0], [0.13, 0.18], [0.06, 0.26], [0, 0.28]], 8), '#2B2826', { pos: [x, d.y + 1.35, z + 0.38] }, { mat: 'metal' });
-      G.add(sphere(0.07, 10, 8), '#FFE08A', { pos: [x, d.y + 1.47, z + 0.38] });
-      lampGlows.push({ p: new THREE.Vector3(x, d.y + 1.47, z + 0.38), size: 1.3, color: '#FFE08A' });
-      lamps.push({ x, y: d.y + 1.45, z: z + 0.38 });
+      // an open iron lantern: base, four bars, a little roof and a ring to hang it by
+      const lx = x, ly = d.y + 1.3, lz = z + 0.38;
+      b.add(rbox(0.2, 0.03, 0.2, 0.01), '#2B2826', { pos: [lx, ly, lz] }, { mat: 'metal' });
+      for (const [ox, oz] of [[-0.08, -0.08], [0.08, -0.08], [-0.08, 0.08], [0.08, 0.08]]) b.add(rbox(0.018, 0.24, 0.018, 0.004), '#2B2826', { pos: [lx + ox, ly + 0.13, lz + oz] }, { mat: 'metal', outline: false });
+      b.add(lathe([[0, 0], [0.15, 0], [0.04, 0.1], [0, 0.12]], 4), '#2B2826', { pos: [lx, ly + 0.25, lz], rot: [0, Math.PI / 4, 0] }, { mat: 'metal' });
+      b.add(torus(0.025, 0.006, 4, 10), '#2B2826', { pos: [lx, ly + 0.39, lz], rot: [0, Math.PI / 2, 0] }, { mat: 'metal', outline: false });
+      G.add(sphere(0.06, 10, 8), '#FFE08A', { pos: [lx, ly + 0.12, lz] });
+      lampGlows.push({ p: new THREE.Vector3(lx, ly + 0.12, lz), size: 1.3, color: '#FFE08A' });
+      lamps.push({ x: lx, y: ly + 0.1, z: lz });
       circle(x, z, 0.12);
     }
     // ladder at the end, a bench, a lifebuoy, a coil of rope, crab pot
@@ -196,8 +207,8 @@ export function buildCove(ctx) {
     for (let i = 0; i < 4; i++) b.add(torus(0.28, 0.072, 10, 6, Math.PI / 6), '#D9544D', { pos: [-26.0, d.y + 0.95, d.z - d.hw + 0.05], rot: [0, 0, (i / 4) * Math.PI * 2] }, { mat: 'glossy', outline: false });
     b.add(rbox(0.1, 1.3, 0.1, 0.02), POST, { pos: [-26.0, d.y + 0.6, d.z - d.hw - 0.05] }, { mat: 'wood' });
     for (let i = 0; i < 4; i++) b.add(torus(0.18 - i * 0.025, 0.02, 4, 18), ROPE, { pos: [-33.2, d.y + 0.02 + i * 0.03, d.z + 0.5], rot: [Math.PI / 2, 0, 0] }, { mat: 'fabric', outline: false });
-    b.add(rbox(0.5, 0.36, 0.5, 0.06), '#C9A24A', { pos: [-29.2, d.y + 0.18, d.z - 0.6] }, { mat: 'fabric' });
-    circle(-29.2, d.z - 0.6, 0.3);
+    b.add(rbox(0.5, 0.36, 0.5, 0.06), '#C9A24A', { pos: [-27.2, d.y + 0.18, d.z + 0.55] }, { mat: 'fabric' });
+    circle(-27.2, d.z + 0.55, 0.3);
   }
 
   // ---------- boathouse + beach life ----------
