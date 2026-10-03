@@ -894,7 +894,7 @@ export function buildWorld(scene, fx) {
           if (wildWater(x, z) || (creekAt(x, z)?.d ?? 99) < 2.2) continue;
           const y = terrainHeight(x, z);
           if (k === 0 && i > 0) continue;
-          b.add(roundCyl(0.07, 0.95, 0.04, 10), C.honeyDark, { pos: [x, y - 0.1, z] });
+          b.add(roundCyl(0.07, 0.95, 0.03, 7), C.honeyDark, { pos: [x, y - 0.1, z] });
           if (k < n) {
             const xn = x0 + ((x1 - x0) * (k + 1)) / n, zn = z0 + ((z1 - z0) * (k + 1)) / n;
             if (wildWater(xn, zn) || (creekAt(xn, zn)?.d ?? 99) < 2.2) continue;

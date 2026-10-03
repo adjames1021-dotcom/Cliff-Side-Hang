@@ -179,6 +179,13 @@ export function planWoods({ terrainHeight, avoid }) {
     if (kind === 'round' && R() < 0.05) kind = 'blossom';
     trees.push({ x, z, y, s: (kind === 'pine' ? 1.0 : 0.95) + R() * 0.55, kind });
   }
+  // pines climbing the mountains round the edge (just scenery: you can't get up there)
+  for (let gx = -18; gx < 84; gx += 4.2) for (let gz = -84; gz < 84; gz += 4.2) {
+    const x = gx + R() * 3.5, z = gz + R() * 3.5;
+    const edge = Math.max(x - 60.5, Math.abs(z) - 60.5);
+    if (edge < 0 || edge > 22 || x < -17.6 || R() > 0.62 - edge * 0.012) continue;
+    trees.push({ x, z, y: terrainHeight(x, z), s: 1.1 + R() * 0.6, kind: R() < 0.85 ? 'pine' : 'round', far: true });
+  }
   return trees;
 }
 
@@ -192,11 +199,12 @@ export function buildWoods(ctx) {
   // ---- forest ----
   for (const t of trees) {
     fol.tree(t.x, t.y - 0.05, t.z, t.s, t.kind);
-    circle(t.x, t.z, t.kind === 'birch' ? 0.18 : 0.22 * t.s + 0.08);
+    if (!t.far) circle(t.x, t.z, t.kind === 'birch' ? 0.18 : 0.22 * t.s + 0.08);
   }
   // undergrowth: ferns and bushes under the canopy, mossy rocks, stumps
+  const nearTrees = trees.filter((t) => !t.far);
   for (let i = 0; i < 900; i++) {
-    const t = trees[Math.floor(R() * trees.length)];
+    const t = nearTrees[Math.floor(R() * nearTrees.length)];
     if (!t) break;
     const a = R() * Math.PI * 2, r = 1.0 + R() * 2.6;
     const x = t.x + Math.cos(a) * r, z = t.z + Math.sin(a) * r;
@@ -214,7 +222,7 @@ export function buildWoods(ctx) {
   }
   // little mushroom clusters on the forest floor (just for looks)
   for (let i = 0; i < 70; i++) {
-    const t = trees[Math.floor(R() * trees.length)];
+    const t = nearTrees[Math.floor(R() * nearTrees.length)];
     if (!t) break;
     const a = R() * Math.PI * 2, x = t.x + Math.cos(a) * 0.6, z = t.z + Math.sin(a) * 0.6;
     const y = terrainHeight(x, z);
@@ -640,7 +648,7 @@ export function buildWoods(ctx) {
     const sy = terrainHeight(f.x, f.z);
     fol.rock(f.x, sy - 0.3, f.z, 0.45, '#8C857A', 1.6, 0.7);
     ctx.fireflySpots.push([f.x, f.z, 4], [W.pool.x, W.pool.z, 5], [W.meadow.x, W.meadow.z, 7]);
-    lampGlows.push({ p: new THREE.Vector3(f.x, sy + 0.25, f.z), size: 3.2, color: '#B7F0C8' });
+    lampGlows.push({ p: new THREE.Vector3(f.x, sy + 0.35, f.z), size: 1.4, color: '#B7F0C8' });
     benchAt(f.x + 3.6, f.z - 2.8, -0.9, 'glen');
   }
 

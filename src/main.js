@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { outlineUniforms, Builder, sphere, lathe, C } from './toon.js';
 import { buildWorld, L, groundHeight, isWater } from './world.js';
-import { Character, randomAvatar, SIT_DROP, PROP_INFO, EMOTES } from './characters.js';
+import { Character, randomAvatar, SIT_DROP, PROP_INFO, EMOTES, FUR_VIEW } from './characters.js';
 import { Effects } from './effects.js';
 import { DayNight } from './daynight.js';
 import { buildScenery } from './scenery.js';
@@ -1035,6 +1035,7 @@ function frame(now) {
     creatorCamera(dt, t);
     for (const a of activities) a.update?.(dt, t);
   }
+  FUR_VIEW.pos.copy(camera.position);
   for (const p of game.players.values()) placeCharacter(p, dt);
   if (game.mode === 'creator') placeCharacter(game.preview, dt);
 

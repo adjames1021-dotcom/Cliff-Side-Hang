@@ -315,11 +315,11 @@ export function makeSailboat({ hull = '#2F5E8C', stripe = '#F4F1EA', bottom = '#
 export const BOAT_LEN = HL;
 
 // A little rowing boat (the same hull, smaller and without a rig), e.g. upturned on the beach.
-export function makeRowboat({ hull = '#D9544D', stripe = '#F4F1EA' } = {}) {
+export function makeRowboat({ hull = '#D9544D', stripe = '#F4F1EA', bottom = '#2F5E8C' } = {}) {
   HULL_MAT ||= new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.28, clearcoat: 0.8, clearcoatRoughness: 0.12 });
   const g = new THREE.Group();
-  const outer = new THREE.Mesh(hullGeometry({ hull, stripe, bottom: hull }), HULL_MAT);
-  const inner = new THREE.Mesh(hullGeometry({ hull, stripe, bottom: hull }, true), REAL.paint);
+  const outer = new THREE.Mesh(hullGeometry({ hull, stripe, bottom }), HULL_MAT);
+  const inner = new THREE.Mesh(hullGeometry({ hull, stripe, bottom }, true), REAL.paint);
   outer.castShadow = true; outer.receiveShadow = true; inner.receiveShadow = true;
   registerMesh(outer, 'glossy'); registerMesh(inner, 'paint');
   const b = new Builder();

@@ -1,6 +1,6 @@
-# Prompt: Hillside Hangout, a cozy multiplayer toon village (Cloudflare Workers)
+# Prompt: Hillside Hangout, a cozy multiplayer village on a sea cliff (Cloudflare Workers)
 
-This is an improved version of the prompt this project was built from. It describes what exists in the repo now, so you can rebuild it from scratch or extend it. Paste everything below the line into Claude Code in an empty folder.
+This is an improved version of the prompt this project was built from. It describes what exists in the repo now, so you can rebuild it from scratch or extend it. Paste everything below the line into Claude Code in an empty folder. The first part describes the original toon village (still available as the "Toon" look); **Version 2** at the end describes the realistic look and the wider world that are now the default.
 
 ---
 
@@ -239,3 +239,45 @@ Updating later is `git pull` then `npx wrangler deploy`. The README also explain
 - Build in order: the world and one player → the creator → rooms and movement sync → chat and emotes → sitting and props → the shared activities → day/night tuning → polish. Commit after each working step.
 - Keep code readable, with comments only where they help.
 - At the end, say plainly what works, what you tested and how, and what's rough or untested.
+
+
+## Version 2: realistic look, the wider world, sailing and finds
+
+Build everything above first, then upgrade it as follows. The toon look stays available as a graphics option.
+
+### Realistic rendering
+- **Materials (`materials.js`):** a shared set of physically based materials (paint, plaster, wood, stone, rock, foliage, ground, fabric, fur, metal, glossy, ceramic, cloth, shine), all vertex-coloured. A procedural RGBA detail texture (fbm noise / Voronoi stones / wood grain / knit) is applied **triplanar** in `onBeforeCompile`, varying albedo and roughness and adding bump. The bump height is in **metres** (millimetres for fur and fabric, a few centimetres for rock) and the detail fades with distance — far too strong a bump turns everything into blocky noise. The `Builder` splits merged parts by material kind; outlines only show in the toon style. `setStyle('toon'|'realistic')` swaps materials on every registered mesh.
+- **Sky (`daynight.js`):** Preetham sky in GLSL with a cloud layer, stars, Milky Way, a cratered moon and shooting stars. The same model in JS gives fog and ambient colours. Capture the sky into a PMREM environment map whenever the light changes. Keep sky light at about a third of the sun's (envMapIntensity ~0.34 by day, more at golden hour and night), or everything looks flat. ACES tone mapping; exposure rises at golden hour and night. The sun's shadow camera follows the player, snapped to texels. Light never comes in flatter than ~8° (so a fence doesn't shade the whole village at sunset); sun rays and water glints still use the true sun.
+- **Post (`post.js`):** EffectComposer with MSAA: GTAO (skipping GPU-placed objects), screen-space sun rays marched toward the sun, bloom, a grade (vignette, saturation, contrast), OutputPass.
+- **Sea (`water.js`):** a camera-following radial grid with six Gerstner waves, ripple normals, foam at the cliff, sea stacks and a moving surf line on the cove beach, subsurface glow, optional planar mirror (Ultra). Export a CPU `seaHeight(x, z, t)` so boats and buoys ride the same waves.
+- **Grass (`grass.js`):** GPU tufts (4 blades each) placed from `gl_InstanceID` on a grid around the camera, reading height and density from a baked map (no grass on steep slopes), swaying in gusts, pushed aside by players, glowing when backlit.
+- **Foliage (`foliage.js`):** oaks, pines, birches and blossom trees (bark trunks, roots, branches, leaf-cluster cards lit like a round canopy and swaying), ferns, bushes, mossy rocks (welded icosahedra so normals are smooth), leaf litter and instanced pebbles, grouped into 36 m chunks so off-screen patches are culled.
+- **Animals:** plush fur (sheen) plus **fur shells** (7 instanced copies pushed out along normals with strands cut by a 3D hash, alpha-to-coverage), glossy eyes with iris, pupil and two catch-lights, glossy noses, chubby cheeks, paw pads, knit jumpers with stripes and ribbing, ears on their own pivots that twitch and flop.
+
+### Graphics menu and options (`settings.js`)
+Presets Low / Medium / High / Ultra plus individual options: resolution, shadows (off/low/high/ultra), lamp lights at night, grass, bloom, sun rays, AO, sea reflections, fluffy fur, anti-aliasing, FOV, first/third person, realistic/toon, FPS counter. Saved in localStorage. Auto-adjust lowers the pixel ratio first, then the post effects, and recovers when smooth. `?gfx=ultra` and `?hq` URL flags for screenshots.
+
+### First person and emotes
+- **V**, a HUD button, or scrolling all the way in switches to first person: camera at the eyes (smoothed), pointer lock on click, the body hidden from the camera but still casting its shadow, a small crosshair.
+- **One emote at a time**: the wheel greys out while one plays; the server enforces it per player.
+
+### The wider world (`wilds.js`, `woods.js`, `cove.js`)
+- Rolling hills out to about 60 m in every direction except the sea, rising into wooded mountains that stop you. A summit (≈14 m), a meadow bowl, a rise the creek tumbles off.
+- **Ten trails** as Catmull-Rom polylines with smoothed height profiles that flatten the terrain into a worn tread. Dress them with edge stones, leaf litter, timber steps where steep, coloured waymarker posts, signposts (canvas-texture boards readable from both sides) and logs to sit on.
+- **Creek**: water levels derived from the terrain so it always runs downhill below its banks; a flowing-water ribbon material; a waterfall sheet into a pool with mist; a footbridge on an arch where a trail crosses; it pours off the clifftop into the sea.
+- **Places**: summit (cairn, flag, viewfinder, benches), Mossfall Falls, a log cabin (porch, rocking chairs, woodpile, chimney smoke, lantern), ruins (walls, an arch, a well), a fairy ring that glows at night, a deer meadow.
+- **Cliff steps**: three flights cut into the cliff (rock bed, stone treads, rope railing on posts, lanterns on the landings) and a timber stair onto the beach. Walking uses the walker's current height to pick the right flight where they pass above each other.
+- **Cove**: sand that darkens toward the waterline, a boathouse, deck chairs and umbrella, driftwood, an upturned rowboat, rock pools, a buoy, and a dock with pilings, bollards, lanterns, a ladder and a bench.
+- Walkability is a function (`walkable(x, z, y)`), colliders live in a spatial grid, and the camera backs off from terrain, the cliff and buildings.
+
+### Sailing (`boats.js`, `activities/sailing.js`)
+Three detailed sailboats (lofted hull with antifouling, boot stripe and sheer stripe, varnished gunwales, foredeck, cockpit benches, mast with spreaders and rigging, a mainsail and jib built as grids that billow to leeward and luff in irons, a swinging boom, rudder and tiller, fenders, pennant, name on the transom). Take the helm at the dock: W/S trim, A/D steer, a simple polar (no-go zone into the wind, fastest on a reach), heel, wake foam, bumping off shores, stacks and other boats. The helm is a seat: the helmsman's position syncs through normal moves and everyone else places the boat from it. Friends can crew. E returns you to the dock with a short fade.
+
+### Finds and wildlife (`activities/forage.js`)
+24 finds across zones (woods, creek, meadow, summit, glen, beach) with rarities and night-only ones. Which find sits on which spot is derived from the shared room clock (a new batch every 4 minutes), so friends see the same things; picking up only hides it for you. Saved in localStorage; rare finds trigger a "Look, a …!" show-off. Deer, rabbits, crabs and an owl (at night) wander, graze and flee; coming close counts as spotting them. The book becomes a **Journal** with Fish / Finds / Wildlife tabs.
+
+### The café
+A two-storey corner café: stone plinth, cream plaster, a serving hatch with a peek-in nook (shelves of jars, an espresso machine, a cake under a dome, pendant lamps), a glazed door with wall lanterns, a timbered upper floor with shuttered windows and flower boxes, a tiled roof with a dormer and chimney, a scalloped striped awning with the name on the valance, a hanging cup sign, a tiled counter with a pastry case, and a terrace with bistro tables, an umbrella, olive trees in pots, string lights and a bicycle.
+
+### Tests
+Add checks for: hiking out on a trail, the map edge, the cliff steps going down, the beach and dock, taking a boat out and coming back, picking up a find and seeing it in the journal, the café's seats, one-emote-at-a-time, and in multiplayer a friend seeing your boat sail and the helm being refused to someone else.

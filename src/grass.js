@@ -2,7 +2,7 @@
 // read the ground height and density from a baked map, sway in the wind and bend away from players.
 import * as THREE from 'three';
 
-const COUNTS = [0, 22000, 48000, 90000];
+const COUNTS = [0, 18000, 34000, 62000];
 const RADIUS = [0, 16, 22, 28];
 
 // One tuft: a few thin blades of different heights leaning out from a common root.

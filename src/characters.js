@@ -109,7 +109,9 @@ export function makeProp(name, mallowColor) {
 // ---------- fur shells ----------
 // Fluffy fur: each furry part is drawn a few more times, each copy pushed a little further out
 // along its normals and with more and more of it cut away, leaving soft tufts at the edges.
-const SHELLS = 7;
+const SHELLS = 5;
+// fur shells are only drawn on animals near the camera (main.js keeps this up to date)
+export const FUR_VIEW = { pos: new THREE.Vector3(), range: 13 };
 const shellMats = new Map();
 function shellMaterial(len) {
   let m = shellMats.get(len);
@@ -203,7 +205,7 @@ function buildParts(av) {
 
   // ---- head ----
   const head = new Builder();
-  head.add(sphere(0.33, 40, 30), fur, { pos: [0, c, 0], scale: [1.1, 0.95, 1] }, FUR_M);
+  head.add(sphere(0.33, 34, 24), fur, { pos: [0, c, 0], scale: [1.1, 0.95, 1] }, FUR_M);
   for (const s of [-1, 1]) head.add(sphere(0.17, 20, 14), fur, { pos: [s * 0.19, c - 0.085, 0.1], scale: [1, 0.85, 1] }, FUR_M); // chubby cheeks
   head.add(sphere(0.125, 24, 16), light, { pos: [0, c - 0.088, 0.262], scale: [1.28, 0.86, 0.78] }, FUR_M);
   const noseCol = av.animal === 'bunny' || av.animal === 'cat' ? '#E58A9B' : '#2E1C14';
@@ -592,7 +594,7 @@ export class Character {
     }
 
     // fur shells: realistic style only, and only up close
-    const furVis = this.furOn && STYLE.name !== 'toon' && !this.camHidden;
+    const furVis = this.furOn && STYLE.name !== 'toon' && !this.camHidden && this.root.position.distanceToSquared(FUR_VIEW.pos) < FUR_VIEW.range * FUR_VIEW.range;
     for (const sh of this.shells) sh.visible = furVis;
 
     // blob shadow stays on the ground

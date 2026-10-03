@@ -1,6 +1,8 @@
 # Hillside Hangout
 
-A cozy little browser game where friends drop into a toon village on a sea cliff as chibi animals. You can walk around, chat, emote, sit on benches, kick a beach ball, fish off the dock, toast marshmallows, swing, jam on the stage, and just hang out. There's no goal and no way to lose.
+A cozy little browser game where friends drop into a village on a sea cliff as fluffy chibi animals. You can walk around, chat, emote, sit on benches, kick a beach ball, fish off the dock, toast marshmallows, swing, jam on the stage, hike the woods, collect things you find, take the steps down the cliff to the cove and sail boats around the bay — or just hang out. There's no goal and no way to lose.
+
+It looks realistic by default (physically based materials, a real sky, waves, swaying grass, sun rays and soft shadows), and there's a toon look in the graphics menu if you prefer the old style.
 
 It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflare Worker** serves the game, and a **Durable Object** per room keeps everyone in sync. The free Workers plan is enough.
 
@@ -12,16 +14,18 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 | ![Jamming on the stage](docs/stage.jpg) | ![Swings](docs/park.jpg) |
 | ![Toasting a marshmallow](docs/campfire.jpg) | ![The character creator](docs/creator.jpg) |
 
-## What's in the village
+## What's in the world
 
-- **Plaza:** a fountain, string lights and benches.
-- **Café:** grab a mug of cocoa or a milkshake at the counter, or sit on a stool.
+- **Plaza:** a fountain, cobbles, string lights and benches.
+- **Café:** a timbered two-storey café with a serving hatch, a striped awning and a terrace. Grab a mug of cocoa or a milkshake at the counter, sit on a stool or at a bistro table.
 - **Pond:** a dock to fish from, lily pads, and ducks paddling in loops.
 - **Park:** a swing set, a seesaw, a picnic blanket and a basket of snacks.
 - **Stage:** a piano, drums and a xylophone.
 - **Campfire:** log seats around it.
 - **Lookout:** a hilltop telescope looking out over the sea, where boats sail by.
-- **Around the edge:** painted hills, trees and little houses, with a soft invisible wall.
+- **The woods:** rolling wooded hills all round the village, laced with ten signposted trails (Woodland Loop, Summit Path, Ridge Walk, Windmill Way, Meadow Cut, Falls Path, Creekside Walk and spurs). Out there: a summit with a cairn and a view, Mossfall Falls and its pool, a creek you can follow to where it pours off the cliff into the sea, a footbridge, a woodcutter's cabin with rocking chairs, old ruins with an arch and a well, a fairy ring that glows at night, and a meadow where deer graze.
+- **The cove:** steps cut down the cliff face lead to a sandy beach with a boathouse, deck chairs, rock pools and a dock with three sailboats.
+- **Things to find:** 24 kinds of finds — mushrooms, feathers, acorns, shells, sea glass, crystals, a golden acorn, a message in a bottle — and animals to spot, all kept in your journal.
 - **Ambient life:** butterflies, ducks, a sleeping cat on a barrel, chimney smoke and swaying grass.
 - **Day and night:** a full day takes 20 minutes, and everyone in a room shares the same clock. New rooms start at golden hour. Lamps glow, fireflies come out and stars appear at night.
 
@@ -36,10 +40,11 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 | Emotes | Q (then 1–8) | 😊 |
 | Chat | Enter to type, Enter to send, Esc to close | 💬 |
 | Ping a spot | G | – |
-| Fish book | B | 📖 |
+| Journal (fish, finds, wildlife) | B | 📖 |
+| First person / third person | V, or scroll all the way in | 👀 |
 | Sound on/off | M | 🔊 |
 | Put down what you're holding | R | – |
-| Menu | Esc | ☰ |
+| Menu (and Graphics) | Esc | ☰ |
 
 **Activities**
 
@@ -50,6 +55,13 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 - **Seesaw:** two friends on it bob each other up and down.
 - **Instruments:** press keys 1–8 or tap the pads. Notes play on a pentatonic scale and snap lightly to a shared beat, so jamming together sounds nice.
 - **Telescope:** look through it to see the boats out at sea.
+- **Hiking and finding things:** follow the trails out of the village. Little things glint beside the paths, by the creek, on the summit, in the fairy glen and on the beach. Walk up and press E to pick one up. Everyone in a room sees the same finds (a fresh batch turns up every few minutes), and a rare find makes you show it off. Some only appear after dark. Coming close to a deer, a rabbit, a crab or the owl on the cabin roof counts as spotting it.
+- **Sailing:** take the cliff steps down to the cove, walk out on the dock and press E by a boat. W trims the sails in, S eases them (and paddles backwards when you're stopped), A/D steer. The breeze comes from the west: you can't sail straight into it, and you're fastest with it on your side. Friends can hop aboard as crew while the boat's at the dock. Press E to head back.
+- **Emotes:** one at a time — a new one waits until the last has finished.
+
+## Graphics
+
+Open the menu (Esc or ☰) and choose **Graphics**, or use the link on the title screen. Presets go from **Low** to **Ultra**, and every option can be set on its own: resolution, shadows, lamp lights at night, grass, glow (bloom), sun rays, ambient occlusion, sea reflections, fluffy fur, anti-aliasing, field of view, first or third person, the realistic or toon look, and an FPS counter. Settings are saved on each device. With **Auto-adjust** on, the game lowers the resolution a little (and then the post effects) when frames start dropping, and brings them back when things are smooth.
 
 ## Run it locally
 
@@ -128,17 +140,27 @@ Invite links made this way carry the server address along, so friends connect to
 
 ```
 index.html            page, HUD, lobby, creator, chat and all the styles
-src/main.js           game loop, camera, input, players, seats, chat, emotes, pings
-src/world.js          the hand-made map, colliders, seats, ducks/boats/butterflies
-src/characters.js     chibi animals, accessories, props, waddle + emote animations
-src/toon.js           toon materials, ink outlines, rounded shapes, mesh merging
-src/daynight.js       sky, sun/moon, fog, lamp glow, fireflies over the shared day
-src/effects.js        particles: hearts, sparkles, notes, puffs, z's, confetti, glows
+src/main.js           game loop, camera (third and first person), input, players, seats, chat, emotes, pings, graphics settings
+src/world.js          the village map, terrain, cliff, café, houses, colliders, seats, ducks/boats/butterflies
+src/wilds.js          layout of the woods, trails, creek, cliff steps, cove and dock; heights and where you can walk
+src/woods.js          the forest, trail dressing, creek water, waterfall, footbridge, summit, cabin, ruins, fairy ring, meadow
+src/cove.js           the cliff steps, beach, boathouse and dock
+src/boats.js          sailboats (lofted hull, rigging, sails that fill and luff) and rowboats
+src/foliage.js        trees, ferns, bushes, rocks and leaf litter, grouped into chunks
+src/grass.js          GPU grass tufts around the camera, with wind and footsteps
+src/water.js          the sea (Gerstner waves, foam, surf, reflections) and pond water
+src/materials.js      physically based materials with procedural surface detail, and the realistic/toon switch
+src/settings.js       graphics presets, options and the graphics menu
+src/post.js           ambient occlusion, sun rays, bloom, colour grading
+src/characters.js     plush chibi animals (fur shells, glossy eyes, knit jumpers), accessories, props, animations
+src/toon.js           shape helpers, mesh merging, toon materials and ink outlines
+src/daynight.js       physical sky, sun/moon, clouds, stars, fog, sky lighting, lamp lights, fireflies
+src/effects.js        particles: hearts, sparkles, notes, puffs, z's, confetti, mist, foam, glows
 src/ui.js             character creator, toasts, action prompt, emote wheel
 src/net.js            connection, reconnects, lobby panel, chat box, invite links
 src/sync.js           interpolation of other players, shared clock, seats, campfire
 src/audio.js          WebAudio piano/xylophone/drums and little sound effects
-src/activities/*.js   ball, fishing, campfire, playground, music, café, lookout
+src/activities/*.js   ball, fishing, campfire, playground, music, café, lookout, sailing, forage (finds + wildlife)
 server/worker.js      the Worker (assets, /health, /room/CODE) and the Room Durable Object
 wrangler.toml         Worker + Durable Object config (SQLite-backed, free plan friendly)
 tests/*.mjs           Playwright checks (multiplayer, activities, custom server, screenshots)
@@ -146,6 +168,7 @@ tests/*.mjs           Playwright checks (multiplayer, activities, custom server,
 
 **The room server** (`server/worker.js`) uses the WebSocket Hibernation API and SQLite storage. It:
 - holds up to 8 players
+- lets each player play one emote at a time
 - sends each newcomer the roster, the room clock and the shared state
 - relays movement
 - referees seats ("someone's already there")
@@ -161,8 +184,9 @@ The checks drive real headless browsers against `wrangler dev`:
 ```sh
 npx wrangler dev --persist-to /tmp/hangout-rooms     # in one terminal
 npx playwright install chromium                      # once
-node tests/multiplayer.mjs     # joining by code/link, movement, chat, emotes, seats, props, ball, campfire, full room, reloads
-node tests/activities.mjs      # fishing, toasting, swings, seesaw, music, café, telescope, ball, pings
+node tests/multiplayer.mjs     # joining by code/link, movement, chat, emotes, seats, props, ball, campfire, sailing together, full room, reloads
+node tests/activities.mjs      # fishing, toasting, swings, seesaw, music, café, telescope, ball, pings, emotes, hiking, cliff steps, sailing, finds
+node tests/look.mjs "?hq" "name:js"   # render a view after running some code in the page (handy for checking looks)
 python3 -m http.server 8790 &  # then: page hosted elsewhere + pasted server address
 node tests/server-address.mjs
 node tests/screens.mjs         # screenshots into /tmp/hangout-shots
