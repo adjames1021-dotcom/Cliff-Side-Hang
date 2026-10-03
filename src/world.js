@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { C, MAT, Builder, rbox, sphere, capsule, torus, lathe, roundCyl, matrixOf, toonMaterial, rng, hash, outlineMaterial, addSmoothNormals } from './toon.js';
 import { REAL, registerMesh } from './materials.js';
 import { Foliage, noiseRock } from './foliage.js';
-import { W as WILD, initWilds, hills, shapeTerrain, specialGround, walkable as wildWalkable, wildWater, trailAmt, creekAt, wildGrass, sailable, beachHeight, inCove, onDock } from './wilds.js';
+import { W as WILD, initWilds, hills, shapeTerrain, specialGround, walkable as wildWalkable, wildWater, trailAmt, creekAt, wildGrass, sailable, beachHeight, inCove, onDock, stepsSolid } from './wilds.js';
 import { planWoods, buildWoods, signBoard } from './woods.js';
 import { buildCove } from './cove.js';
 import { makeSailboat } from './boats.js';
@@ -1083,6 +1083,7 @@ export function buildWorld(scene, fx) {
     seatById: (id) => seatMap.get(id) || seats.find((s) => s.id === id),
     // is this point inside the ground or the cliff? (cameras back off)
     solidAt(x, y, z) {
+      if (stepsSolid(x, y, z)) return true;
       if (x >= -19.6) return y < terrainHeight(x, z) - 0.15;
       const top = terrainHeight(-19.6, z);
       if (y > top) return false;

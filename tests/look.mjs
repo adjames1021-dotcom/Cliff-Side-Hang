@@ -27,7 +27,9 @@ for (const step of steps) {
   try { await page.evaluate(code); } catch (e) { console.log('step error', name, e.message); }
   await sleep(wait);
   if (page.errors.length) console.log('errors so far:', [...new Set(page.errors)].slice(0, 8).join('\n'));
-  await page.screenshot({ path: OUT + name + '.png', timeout: 180000 });
+  // JPG=dir saves compressed images there instead (for the README)
+  if (process.env.JPG) await page.screenshot({ path: `${process.env.JPG}/${name}.jpg`, type: 'jpeg', quality: 82, timeout: 180000 });
+  else await page.screenshot({ path: OUT + name + '.png', timeout: 180000 });
   console.log('shot', name, Date.now() - t, 'ms');
 }
 if (page.errors.length) console.log('ERRORS:\n' + [...new Set(page.errors)].slice(0, 20).join('\n'));

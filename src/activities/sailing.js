@@ -193,8 +193,8 @@ export default function sailing(game) {
         if (Math.abs(b.speed) > 1 && b.wakeT <= 0 && game.camera.position.distanceTo(b.model.root.position) < 90) {
           b.wakeT = 0.09;
           const sx = Math.sin(b.yaw), sz = Math.cos(b.yaw);
-          fx.emit('foam', { x: b.x - sx * 2.7, y: b.y + 0.05, z: b.z - sz * 2.7 }, { vx: -sx * 0.3, vz: -sz * 0.3, k: 0.8 + Math.abs(b.speed) * 0.1 });
-          for (const side of [-1, 1]) fx.emit('foam', { x: b.x + sx * 1.4 + sz * side * 0.95, y: b.y + 0.05, z: b.z + sz * 1.4 - sx * side * 0.95 }, { vx: sz * side * 0.5, vz: -sx * side * 0.5, k: 0.5, a: 0.4 });
+          fx.emit('foam', { x: b.x - sx * 2.7, y: b.y - 0.02, z: b.z - sz * 2.7 }, { vx: -sx * 0.3, vz: -sz * 0.3, k: 0.8 + Math.abs(b.speed) * 0.1 });
+          for (const side of [-1, 1]) fx.emit('foam', { x: b.x + sx * 1.4 + sz * side * 0.95, y: b.y - 0.02, z: b.z + sz * 1.4 - sx * side * 0.95 }, { vx: sz * side * 0.5, vz: -sx * side * 0.5, k: 0.5, a: 0.4 });
           if (Math.abs(b.speed) > 4 && Math.random() < 0.3) fx.emit('drop', { x: b.x + sx * 2.6, y: b.y + 0.5, z: b.z + sz * 2.6 }, { vx: sz * (Math.random() - 0.5) * 2, vz: -sx * (Math.random() - 0.5) * 2, vy: 1.8 });
         }
       }

@@ -10,9 +10,12 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 
 | | |
 |---|---|
-| ![Plaza by day](docs/plaza-day.jpg) | ![Plaza at night](docs/plaza-night.jpg) |
-| ![Jamming on the stage](docs/stage.jpg) | ![Swings](docs/park.jpg) |
-| ![Toasting a marshmallow](docs/campfire.jpg) | ![The character creator](docs/creator.jpg) |
+| ![Friends in the plaza](docs/plaza-day.jpg) | ![The plaza at night](docs/plaza-night.jpg) |
+| ![The café](docs/cafe.jpg) | ![Toasting marshmallows at the campfire](docs/campfire.jpg) |
+| ![A signposted trail in the woods](docs/woods.jpg) | ![Mossfall Falls](docs/falls.jpg) |
+| ![The summit at golden hour](docs/summit.jpg) | ![The fairy glen at night](docs/glen-night.jpg) |
+| ![The cove and its dock](docs/cove.jpg) | ![Sailing past the cliff steps](docs/sailing.jpg) |
+| ![The character creator](docs/creator.jpg) | |
 
 ## What's in the world
 

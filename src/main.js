@@ -481,7 +481,7 @@ function applySettings(_s, changed) {
   if (has('lights')) sky.setLampCount(settings.lights);
   if (has('grass')) grass.setLevel(settings.grass);
   if (has('reflections')) waters.setReflections(settings.reflections);
-  if (has('style')) setStyle(settings.style);
+  if (has('style')) { setStyle(settings.style); for (const p of allChars()) p.char.camHidden = null; } // re-hide your body in first person
   if (has('fur')) for (const p of allChars()) p.char.setFur(settings.fur);
   if (has('shadows') || has('style')) for (const p of allChars()) p.char.setShadows(settings.shadows > 0);
   Object.assign(post.want, { bloom: settings.bloom, rays: settings.rays, ao: settings.ao });

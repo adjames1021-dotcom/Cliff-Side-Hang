@@ -209,6 +209,17 @@ function legAt(x, z) {
   }
   return best;
 }
+// inside the rock under the cliff steps? (cameras back off)
+export function stepsSolid(x, y, z) {
+  if (x > -18 || z < -13.5 || z > 8.5) return false;
+  for (const s of legSegs) {
+    const p = project(s, x, z);
+    const ly = lerp(s.y0, s.y1, p.t);
+    if (p.d < s.hw + 0.9 && y < ly - 0.05 && y > ly - 2.2 && s.kind === 'rock') return true;
+  }
+  return false;
+}
+
 export function onBridge(x, z) {
   const c = Math.cos(BRIDGE.yaw), s = Math.sin(BRIDGE.yaw);
   const dx = x - BRIDGE.x, dz = z - BRIDGE.z;
@@ -299,6 +310,8 @@ export function wildWater(x, z) {
 // Is this open water a boat can float in?
 export function sailable(x, z, r = 1.2) {
   if (x > -22.2) return false;
+  // keep off the boulders along the foot of the cliff (the cove has its own shoreline)
+  if (!inCove(x, z, -2) && x > -25.6 + (r > 1 ? 0 : 0.6)) return false;
   if (inCove(x, z, -2) && x > shoreX(z) - r) return false;
   if (Math.abs(z - W.dock.z) < W.dock.hw + r * 0.6 && x > W.dock.x0 - r && x < W.dock.x1) return false;
   if (Math.hypot(x, z) > 330) return false;

@@ -234,7 +234,7 @@ export class Effects {
         for (let i = 0; i < (opts.n || 1); i++) this.p(this.norm, { x: x + rnd(-0.6, 0.6), y, z: z + rnd(-0.6, 0.6), vx: rnd(-0.25, 0.25), vy: rnd(0.25, 0.6), vz: rnd(-0.25, 0.25), life: rnd(1.6, 2.6), size: rnd(0.5, 0.85), grow: 1.0, tile: T.puff, color: '#F2F7FA', a: opts.a ?? 0.3, drag: 0.6, fadeIn: 0.25 });
         break;
       case 'foam':
-        this.p(this.norm, { x: x + rnd(-0.15, 0.15), y, z: z + rnd(-0.15, 0.15), vx: opts.vx || 0, vz: opts.vz || 0, life: rnd(1.6, 2.6), size: rnd(0.3, 0.55) * (opts.k || 1), grow: 0.9, tile: T.puff, color: '#F4FAFB', a: opts.a ?? 0.55, drag: 1.2, hold: 0.25 });
+        this.p(this.norm, { x: x + rnd(-0.15, 0.15), y, z: z + rnd(-0.15, 0.15), vx: opts.vx || 0, vz: opts.vz || 0, vy: -0.05, life: rnd(1.2, 2.0), size: rnd(0.16, 0.28) * (opts.k || 1), grow: 0.5, tile: T.puff, color: '#F4FAFB', a: (opts.a ?? 0.55) * 0.6, drag: 1.2, hold: 0.2 });
         break;
       case 'ring':
         this.p(this.add, { x, y, z, life: 0.6, size: 0.5, grow: 1.4, tile: T.glow, color: opts.color || C.butter, a: 0.8 });
