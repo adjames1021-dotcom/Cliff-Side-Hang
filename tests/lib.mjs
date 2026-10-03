@@ -9,7 +9,8 @@ const pw = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 export const { chromium } = pw.default || pw;
 
 export const BASE = process.env.BASE_URL || 'http://localhost:8787';
-export const OUT = new URL('./out/', import.meta.url).pathname;
+// Screenshots go outside the project: wrangler dev watches it and would reload mid-test.
+export const OUT = (process.env.TEST_OUT || '/tmp/hangout-shots').replace(/\/?$/, '/');
 mkdirSync(OUT, { recursive: true });
 
 export function launch() {

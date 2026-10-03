@@ -328,7 +328,7 @@ export class Character {
       T.legL = T.legR = pose === 'stool' ? -1.15 : -1.42;
       T.bodyY = HIP_Y; T.bodyRz = 0; T.bodyRx = 0;
       if (pose === 'swing') { T.armLx = T.armRx = -2.75; T.armLz = 0.12; T.armRz = -0.12; }
-      if (pose === 'seesaw') { T.armLx = T.armRx = -1.25; T.armLz = 0.25; T.armRz = -0.25; }
+      if (pose === 'seesaw') { T.armLx = T.armRx = -1.45; T.armLz = 0.2; T.armRz = -0.2; }
     }
     if (ground) {
       T.legL = T.legR = -1.5;
