@@ -52,7 +52,7 @@ export function updateRemote(p, dt, groundHeight) {
   p.yaw = lerpAngle(p.yaw, snap.r ?? p.yaw, 1 - Math.exp(-dt * 12));
   p.pose = snap.a || 'idle';
   p.swing = snap.s || 0;
-  const g = groundHeight(p.pos.x, p.pos.z);
+  const g = groundHeight(p.pos.x, p.pos.z, p.pos.y);
   p.grounded = p.pos.y - g < 0.06;
   p.vy = (p.pos.y - prev.y) / Math.max(dt, 1e-3);
 }

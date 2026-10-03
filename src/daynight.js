@@ -202,7 +202,8 @@ export class DayNight {
 
     // pool of real lights the nearest lamps borrow at night
     this.lamps = [];
-    this.lampSpots = [...world.lampPosts.map((p) => ({ x: p.x, y: p.y + 2.8, z: p.z, col: '#FFC98A', k: 1 })), { x: 11, y: 1.9, z: -8.4, col: '#FFC27A', k: 0.9 }];
+    this.lampSpots = [...world.lampPosts.map((p) => ({ x: p.x, y: p.y + 2.8, z: p.z, col: '#FFC98A', k: 1 })), { x: 11, y: 1.9, z: -8.4, col: '#FFC27A', k: 0.9 },
+      ...(world.extraLamps || []).map((l) => ({ x: l.x, y: l.y, z: l.z, col: '#FFC98A', k: 0.7 }))];
 
     this.glows = effects.makeGlows(scene, world.lampGlows);
     this.firefly = 0;
@@ -264,6 +265,8 @@ export class DayNight {
     this.sunColor.setRGB(1, 0.62 + 0.36 * Math.min(1, elev * 3.2), 0.38 + 0.56 * Math.min(1, elev * 2.6));
     const useSun = sd.y > -0.03;
     const dir = this.lightDir.copy(useSun ? sd : md);
+    // light and shadows never come in flatter than ~8 degrees, or a fence post shades the whole village
+    if (dir.y < 0.14) { dir.y = 0.14; dir.normalize(); }
     const moonUp = THREE.MathUtils.smoothstep(md.y, -0.02, 0.1);
     if (useSun) this.sun.color.copy(this.sunColor); else this.sun.color.set('#B9C2FF');
     this.sun.intensity = useSun ? (toon ? 2.2 : 3.4) * sunUp : (toon ? 0.7 : 0.5) * moonUp * night;
@@ -334,7 +337,7 @@ export class DayNight {
         this.firefly -= dt;
         if (this.firefly <= 0) {
           this.firefly = 0.1;
-          const spots = [[10, 9, 6], [-8, 10, 6], [-11.5, -3, 4], [0, 0, 9], [focus.x, focus.z, 7]];
+          const spots = [[10, 9, 6], [-8, 10, 6], [-11.5, -3, 4], [0, 0, 9], [focus.x, focus.z, 7], [focus.x, focus.z, 12], ...(this.world.fireflySpots || [])];
           const [x, z, r] = spots[Math.floor(Math.random() * spots.length)];
           const px = x + (Math.random() - 0.5) * r * 2, pz = z + (Math.random() - 0.5) * r * 2;
           this.fx.emit('firefly', { x: px, y: this.world.groundHeight(px, pz) + 0.5 + Math.random() * 1.3, z: pz });

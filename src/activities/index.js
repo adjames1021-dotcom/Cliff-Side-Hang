@@ -6,5 +6,7 @@ import playground from './playground.js';
 import music from './music.js';
 import cafe from './cafe.js';
 import lookout from './lookout.js';
+import sailing from './sailing.js';
+import forage from './forage.js';
 
-export const ACTIVITIES = [ball, campfire, fishing, playground, music, cafe, lookout];
+export const ACTIVITIES = [ball, campfire, fishing, playground, music, cafe, lookout, sailing, forage];

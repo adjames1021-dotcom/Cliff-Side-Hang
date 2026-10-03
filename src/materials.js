@@ -152,7 +152,7 @@ export const REAL = {
   plaster: std({ roughness: 0.9 }, { ch: 'r', scale: 1.3, bump: 0.004, albedo: 0.09, rough: 0.08 }),
   wood: std({ roughness: 0.74 }, { ch: 'b', scale: 1.1, bump: 0.003, albedo: 0.16, rough: 0.12 }),
   stone: std({ roughness: 0.93 }, { ch: 'g', scale: 0.9, bump: 0.012, albedo: 0.2, rough: 0.06 }),
-  rock: std({ roughness: 0.97 }, { ch: 'g', scale: 0.32, bump: 0.045, albedo: 0.24, rough: 0.05 }),
+  rock: std({ roughness: 0.97 }, { ch: 'r', scale: 0.45, bump: 0.045, albedo: 0.24, rough: 0.05 }),
   foliage: std({ roughness: 0.82 }, { ch: 'r', scale: 3.2, bump: 0.006, albedo: 0.16, rough: 0.1 }),
   ground: std({ roughness: 0.96 }, { ch: 'r', scale: 1.7, bump: 0.008, albedo: 0.2, rough: 0.04 }),
   fabric: phys({ roughness: 0.95, sheen: 0.7, sheenRoughness: 0.75, sheenColor: new THREE.Color('#ffffff') }, { ch: 'a', scale: 11, bump: 0.0008, albedo: 0.05, rough: 0.05, space: 'object' }),

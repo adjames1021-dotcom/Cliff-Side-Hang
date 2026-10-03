@@ -9,6 +9,21 @@ const SEA_WAVES = [
 ];
 const POND_WAVES = [[1, 0.3, 2.2, 0.012], [-0.4, 1, 1.4, 0.008], [0.7, -0.7, 0.9, 0.005], [-1, -0.2, 0.6, 0.003], [0.2, 1, 0.45, 0.002], [1, -1, 0.3, 0.001]];
 
+// Height of the sea surface at (x, z) at time t (same waves as the shader, minus the sideways drift).
+export function seaHeight(x, z, t, out) {
+  let y = 0, sx = 0, sz = 0;
+  for (const [dx0, dz0, wl, a] of SEA_WAVES) {
+    const l = Math.hypot(dx0, dz0), dx = dx0 / l, dz = dz0 / l;
+    const k = (Math.PI * 2) / wl, om = Math.sqrt(9.8 * k);
+    const ph = k * (dx * x + dz * z) - om * t;
+    y += a * Math.sin(ph);
+    sx += dx * k * a * Math.cos(ph);
+    sz += dz * k * a * Math.cos(ph);
+  }
+  if (out) { out.slopeX = sx; out.slopeZ = sz; }
+  return L.seaY + y;
+}
+
 function waveUniform(list) {
   return list.map(([dx, dz, wl, a]) => {
     const l = Math.hypot(dx, dz);
@@ -57,7 +72,7 @@ const FRAG_PARS = /* glsl */`
   uniform float uTime;
   uniform sampler2D uNoise;
   uniform vec3 uDeep, uShallow, uSSS, uSunDir;
-  uniform float uFoamAmt, uShoreX, uRipple;
+  uniform float uFoamAmt, uShoreX, uRipple, uCove;
   uniform vec4 uStacks[4];
   uniform sampler2D uMirror;
   uniform mat4 uMirrorMatrix;
@@ -69,11 +84,11 @@ const FRAG_PARS = /* glsl */`
 
 export function makeWaterMaterial({ waves = SEA_WAVES, deep = '#0b3f57', shallow = '#1f7f8c', sss = '#2fb0a8', steep = 0.55, foam = 1, shoreX = L.cliffX - 0.3, ripple = 1, transparent = false, opacity = 1, stacks = true } = {}) {
   const mat = new THREE.MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.06, metalness: 0, ior: 1.33, transparent, opacity, envMapIntensity: 1 });
-  mat.userData.envK = 2.6; // water mirrors the sky, so it keeps most of the sky light
+  mat.userData.envK = 1.5; // water mirrors the sky, so it keeps more of the sky light
   const U = {
     uTime: { value: 0 }, uWaves: { value: waveUniform(waves) }, uSteep: { value: steep },
     uNoise: { value: DETAIL }, uDeep: { value: new THREE.Color(deep) }, uShallow: { value: new THREE.Color(shallow) }, uSSS: { value: new THREE.Color(sss) },
-    uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uFoamAmt: { value: foam }, uShoreX: { value: shoreX }, uRipple: { value: ripple },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uFoamAmt: { value: foam }, uShoreX: { value: shoreX }, uRipple: { value: ripple }, uCove: { value: stacks ? 1 : 0 },
     uStacks: { value: (stacks ? L.seaStacks : []).map(([x, z, s]) => new THREE.Vector4(x, z, s * 1.05, 0)).concat(Array(4).fill(0).map(() => new THREE.Vector4(0, 0, -1, 0))).slice(0, 4) },
     uMirror: { value: null }, uMirrorMatrix: { value: new THREE.Matrix4() }, uMirrorAmt: { value: 0 },
   };
@@ -91,6 +106,11 @@ export function makeWaterMaterial({ waves = SEA_WAVES, deep = '#0b3f57', shallow
         // how close to the cliff or a sea stack: shallow colour and foam
         float shore = clamp((vWPos.x - uShoreX) / -6.0, 0.0, 1.0);
         float near = 1.0 - shore;
+        // surf running up the sand in the cove
+        if (uCove > 0.5 && vWPos.z > 4.2 && vWPos.z < 21.5) {
+          float sx = -25.43 - 1.8 * sin(3.14159 * (vWPos.z - 4.2) / 17.3);
+          near = max(near, (1.0 - smoothstep(0.0, 4.5, sx - vWPos.x)) * smoothstep(4.2, 6.2, vWPos.z) * smoothstep(21.5, 19.5, vWPos.z));
+        }
         for (int i = 0; i < 4; i++) {
           if (uStacks[i].z > 0.0) {
             float d = length(vWPos.xz - uStacks[i].xy) - uStacks[i].z;
@@ -111,11 +131,11 @@ export function makeWaterMaterial({ waves = SEA_WAVES, deep = '#0b3f57', shallow
           // two layers of drifting ripples on top of the big waves
           vec2 p1 = vWPos.xz * 0.21 + vec2(uTime * 0.021, uTime * 0.013);
           vec2 p2 = vWPos.xz * 0.53 - vec2(uTime * 0.017, -uTime * 0.026);
-          float e = 0.004;
+          float e = 0.012;
           float h1 = wn(p1), h2 = wn(p2);
           vec2 g = vec2(wn(p1 + vec2(e, 0.0)) - h1, wn(p1 + vec2(0.0, e)) - h1) * 1.6 + vec2(wn(p2 + vec2(e, 0.0)) - h2, wn(p2 + vec2(0.0, e)) - h2);
-          float fadeR = 1.0 - smoothstep(40.0, 260.0, length(vWPos - cameraPosition));
-          vec3 pw = vec3(-g.x, 0.0, -g.y) * (14.0 * uRipple * fadeR);
+          float fadeR = 1.0 - smoothstep(20.0, 150.0, length(vWPos - cameraPosition));
+          vec3 pw = vec3(-g.x, 0.0, -g.y) * (5.0 * uRipple * fadeR);
           normal = normalize(normal + (viewMatrix * vec4(pw, 0.0)).xyz);
         }`)
       .replace('#include <emissivemap_fragment>', /* glsl */`#include <emissivemap_fragment>

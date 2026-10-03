@@ -44,9 +44,9 @@ function tuftGeometry() {
 
 export class Grass {
   // density(x, z) -> 0..1, height(x, z) -> metres
-  constructor(scene, { density, height, rect }) {
+  constructor(scene, { density, height, rect, size = 256 }) {
     this.scene = scene;
-    const N = 256;
+    const N = size;
     const [x0, z0, w, d] = rect;
     const data = new Uint16Array(N * N * 4);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {

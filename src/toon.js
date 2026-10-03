@@ -159,9 +159,11 @@ export function matrixOf({ pos = [0, 0, 0], rot = [0, 0, 0], scale = 1 } = {}) {
 
 function prepGeo(geo, matrix, color) {
   let g = geo.index ? geo.toNonIndexed() : geo.clone();
-  for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+  const keepColor = color === null && g.attributes.color; // null colour: keep the geometry's own vertex colours
+  for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal' && !(keepColor && name === 'color')) g.deleteAttribute(name);
   if (!g.attributes.normal) g.computeVertexNormals();
   if (matrix) g.applyMatrix4(matrix);
+  if (keepColor) return g;
   const col = new THREE.Color(color);
   const arr = new Float32Array(g.attributes.position.count * 3);
   for (let i = 0; i < arr.length; i += 3) { arr[i] = col.r; arr[i + 1] = col.g; arr[i + 2] = col.b; }

@@ -10,7 +10,7 @@ const CODE_RE = /^[A-HJ-NP-Z2-9]{4}$/;
 
 const ANIMALS = ['cat', 'bunny', 'bear', 'puppy', 'fox'];
 const ACCESSORIES = ['beret', 'bowtie', 'scarf', 'crown', 'glasses', 'backpack'];
-const ANIMS = new Set(['idle', 'walk', 'run', 'jump', 'sit', 'stool', 'swing', 'seesaw', 'piano', 'drums', 'play', 'fish', 'toast', 'sitground', 'sleep', 'scope']);
+const ANIMS = new Set(['idle', 'walk', 'run', 'jump', 'sit', 'stool', 'swing', 'seesaw', 'piano', 'drums', 'play', 'fish', 'toast', 'sitground', 'sleep', 'scope', 'helm']);
 const EMOTES = new Set(['wave', 'dance', 'clap', 'laugh', 'sitground', 'heart', 'sleep', 'cheer', 'catch', 'show', 'sip']);
 // How long each emote plays (ms); a player can't start another until it's done (a little slack for lag).
 const EMOTE_MS = { wave: 2200, dance: 4000, clap: 2000, laugh: 2000, heart: 2400, cheer: 2400, sitground: 600, sleep: 600 };

@@ -38,7 +38,7 @@ const sky = new DayNight(scene, renderer, world, fx);
 const scenery = buildScenery(scene, world, fx);
 const waters = new Waters(scene, renderer);
 for (const m of world.waterMeshes) m.material = waters.pond;
-const grass = new Grass(scene, { density: world.grassDensity, height: groundHeight, rect: [-20, -22, 42, 44] });
+const grass = new Grass(scene, { density: world.grassDensity, height: (x, z) => groundHeight(x, z), rect: [-20, -62, 82, 124], size: 512 });
 const post = new Post(renderer, scene, camera);
 const net = new Net();
 const shared = new Shared();
@@ -112,6 +112,7 @@ function clearRemotes() {
 const keys = new Set();
 let typing = false;
 const input = { x: 0, z: 0, run: false, jump: false };
+game.input = input;
 const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 if (isTouch) document.body.classList.add('touch');
 
@@ -287,7 +288,7 @@ const WALK = 3.3, RUN = 5.9, JUMP = 4.9, GRAV = 15, RADIUS = 0.33;
 
 function collide(px, pz, r = RADIUS) {
   for (let it = 0; it < 2; it++) {
-    for (const c of world.colliders) {
+    for (const c of world.collidersNear(px, pz)) {
       if (c.c) {
         const dx = px - c.x, dz = pz - c.z, d = Math.hypot(dx, dz), min = c.r + r;
         if (d < min) {
@@ -307,14 +308,13 @@ function collide(px, pz, r = RADIUS) {
       }
     }
   }
-  const b = L.bounds;
-  return [Math.max(b.minX, Math.min(b.maxX, px)), Math.max(b.minZ, Math.min(b.maxZ, pz))];
+  return [px, pz];
 }
 game.collide = collide;
 
 function blockedAt(x, z, fromY, grounded) {
-  if (isWater(x, z)) return true;
-  const g = groundHeight(x, z);
+  if (isWater(x, z) || !world.walkable(x, z, fromY)) return true;
+  const g = groundHeight(x, z, fromY);
   return grounded ? g > fromY + 0.22 : g > fromY + 0.05;
 }
 
@@ -330,7 +330,8 @@ function updateMe(dt) {
     return;
   }
   if (me.seat) {
-    if (wantsMove || (input.jump && !seatTakesSpace())) standUp();
+    // some seats (a boat's helm) use the movement keys themselves
+    if (!activities.some((a) => a.seatHoldsInput?.(me.seat)) && (wantsMove || (input.jump && !seatTakesSpace()))) standUp();
     input.jump = false;
     return;
   }
@@ -358,10 +359,10 @@ function updateMe(dt) {
   else if (!blockedAt(me.pos.x, nz, me.pos.y, me.grounded)) { pz = nz; me.vel.x *= 0.5; }
   else { me.vel.x = me.vel.z = 0; }
   [px, pz] = collide(px, pz);
-  if (isWater(px, pz)) { px = me.pos.x; pz = me.pos.z; }
+  if (isWater(px, pz) || !world.walkable(px, pz, me.pos.y)) { px = me.pos.x; pz = me.pos.z; }
   me.pos.x = px; me.pos.z = pz;
 
-  const g = groundHeight(px, pz);
+  const g = groundHeight(px, pz, me.pos.y);
   me.vy -= GRAV * dt;
   me.pos.y += me.vy * dt;
   if (me.pos.y <= g) {
@@ -380,7 +381,7 @@ function updateMe(dt) {
 
 // ---------- camera ----------
 const camBlockers = [
-  { x0: L.cafe.x0, z0: L.cafe.z0, x1: L.cafe.x1, z1: L.cafe.z1, h: 3.4 },
+  { x0: L.cafe.x0, z0: L.cafe.z0, x1: L.cafe.x1, z1: L.cafe.z1, h: 6.8 },
   { x0: -4, z0: L.stage.z0 - 0.3, x1: 4, z1: L.stage.z0 + 0.45, h: 4.2 },
 ];
 const camPos = new THREE.Vector3(), tmp = new THREE.Vector3(), camDir = new THREE.Vector3();
@@ -408,10 +409,10 @@ function updateCamera(dt) {
   camDir.set(Math.sin(cam.yaw) * Math.cos(cam.pitch), Math.sin(cam.pitch), Math.cos(cam.yaw) * Math.cos(cam.pitch));
   for (let d = 0.6; d < dist; d += 0.25) {
     const x = cam.target.x + camDir.x * d, y = cam.target.y + camDir.y * d, z = cam.target.z + camDir.z * d;
-    if (camBlockers.some((b) => x > b.x0 - 0.2 && x < b.x1 + 0.2 && z > b.z0 - 0.2 && z < b.z1 + 0.2 && y < b.h)) { dist = Math.max(1.2, d - 0.3); break; }
+    if (camBlockers.some((b) => x > b.x0 - 0.2 && x < b.x1 + 0.2 && z > b.z0 - 0.2 && z < b.z1 + 0.2 && y < b.h) || world.solidAt(x, y, z)) { dist = Math.max(1.2, d - 0.3); break; }
   }
   camPos.copy(cam.target).addScaledVector(camDir, dist);
-  const floor = groundHeight(camPos.x, camPos.z) + 0.45;
+  const floor = world.cameraFloor(camPos.x, camPos.z, camPos.y);
   if (camPos.y < floor) camPos.y = floor;
   camera.position.copy(camPos);
   camera.lookAt(cam.target);
@@ -1038,12 +1039,13 @@ function frame(now) {
 
   const focus = game.mode === 'play' ? me.pos : game.mode === 'creator' ? game.preview.pos : null;
   sky.update(clock.day(), dt, t, camera, focus, game.fireInfo);
-  world.update(dt, t, clock.ms() / 1000, { night: sky.night });
+  world.update(dt, t, clock.ms() / 1000, { night: sky.night, focus });
   scenery.update(dt, t, clock.ms() / 1000, { night: sky.night, horizon: sky.horizon, focus });
-  waters.update(t, camera, sky.lightDir, sky.night);
+  const sunUp = sky.sunDir.y > -0.03;
+  rayLight.dir = sunUp ? sky.sunDir : sky.moonDir; // the real sun, not the softened lighting angle
+  waters.update(t, camera, rayLight.dir, sky.night);
   grassCenter(focus);
   grass.update(t, gc, game.players.values());
-  const sunUp = sky.sunDir.y > -0.03;
   rayLight.strength = sunUp ? 0.5 + sky.golden * 0.9 : 0.22 * sky.night;
   rayLight.color.copy(sunUp ? sky.sunColor : moonCol);
   post.setLook(sky.night, sky.golden, rayLight, STYLE.name === 'toon');

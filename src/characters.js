@@ -122,7 +122,7 @@ function shellMaterial(len) {
       .replace('#include <begin_vertex>', /* glsl */`
         float shellK = (float(gl_InstanceID) + 1.0) / ${SHELLS.toFixed(1)};
         vShell = shellK;
-        vFurP = position * 120.0;
+        vFurP = position * 150.0;
         vec3 transformed = position + normalize(objectNormal) * uLen * shellK;
         transformed.y -= uLen * shellK * shellK * 0.45;`);
     sh.fragmentShader = sh.fragmentShader
@@ -132,10 +132,10 @@ function shellMaterial(len) {
       .replace('#include <clipping_planes_fragment>', /* glsl */`#include <clipping_planes_fragment>
         vec3 fcell = floor(vFurP);
         float fh = furHash(fcell);
-        float frad = mix(0.78, 0.22, vShell) * (0.75 + 0.25 * fh);
-        float fa = (1.0 - smoothstep(frad * 0.55, frad, length(fract(vFurP) - 0.5))) * step(vShell, fh * 0.85 + 0.15);
-        if (fa < 0.32) discard;`)
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(0.62, 1.1, vShell);')
+        float frad = mix(0.9, 0.38, vShell) * (0.8 + 0.2 * fh);
+        float fa = (1.0 - smoothstep(frad * 0.5, frad, length(fract(vFurP) - 0.5))) * step(vShell, fh * 0.9 + 0.1);
+        if (fa < 0.25) discard;`)
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(0.8, 1.04, vShell);')
       .replace('#include <opaque_fragment>', '#include <opaque_fragment>\ngl_FragColor.a = fa;');
   };
   m.customProgramCacheKey = () => 'fur-shell-' + len;
