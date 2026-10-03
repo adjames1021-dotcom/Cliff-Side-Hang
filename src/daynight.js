@@ -4,16 +4,16 @@ import { C, MAT, Builder, sphere, outlineUniforms } from './toon.js';
 
 // f: 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset.
 const KEYS = [
-  { f: 0.00, top: '#272558', hor: '#5E4F8C', sun: '#E2C8EE', si: 0.8, hs: '#B496C8', hg: '#8A5E70', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
-  { f: 0.20, top: '#2F2D68', hor: '#6E5A98', sun: '#E2C8EE', si: 0.75, hs: '#B496C8', hg: '#8C6276', hi: 1.45, sea: '#4C568F', seaFar: '#6E5E9A', water: '#6470AA', night: 0.95 },
+  { f: 0.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 0.20, top: '#2F2D68', hor: '#6E5A98', sun: '#D8D2F6', si: 0.8, hs: '#AAB6E0', hg: '#826A8C', hi: 1.45, sea: '#4C568F', seaFar: '#6E5E9A', water: '#6470AA', night: 0.95 },
   { f: 0.255, top: '#7E8FD0', hor: '#FFC39A', sun: '#FFB27A', si: 1.2, hs: '#D9CDE8', hg: '#EBBBA6', hi: 1.45, sea: '#8FA8D4', seaFar: '#F2C3A8', water: '#B2C8E6', night: 0.25 },
   { f: 0.31, top: '#8FC9EC', hor: '#FFF0D8', sun: '#FFF1DA', si: 1.9, hs: '#E8F1F2', hg: '#F0D6AE', hi: 1.75, sea: '#8CC8E2', seaFar: '#C4E4F0', water: '#BFE3EE', night: 0 },
   { f: 0.62, top: '#8FC9EC', hor: '#FFF0D8', sun: '#FFF1DA', si: 1.9, hs: '#E8F1F2', hg: '#F0D6AE', hi: 1.75, sea: '#8CC8E2', seaFar: '#C4E4F0', water: '#BFE3EE', night: 0 },
   { f: 0.70, top: '#86B0E0', hor: '#FFD69E', sun: '#FFCF96', si: 1.8, hs: '#F0E2E4', hg: '#F4CDA4', hi: 1.6, sea: '#94BFDD', seaFar: '#FFD8AE', water: '#C6DDEA', night: 0 },
   { f: 0.745, top: '#7071B8', hor: '#F7A27A', sun: '#FFA06A', si: 1.3, hs: '#D7B6DA', hg: '#EAAE96', hi: 1.45, sea: '#8F8FC4', seaFar: '#F7A88A', water: '#B4ACD4', night: 0.3 },
-  { f: 0.785, top: '#3D3A7A', hor: '#C47E9E', sun: '#E2C8EE', si: 0.6, hs: '#B89AD0', hg: '#8E6478', hi: 1.4, sea: '#565897', seaFar: '#B77A98', water: '#7476B4', night: 0.85 },
-  { f: 0.84, top: '#272558', hor: '#5E4F8C', sun: '#E2C8EE', si: 0.8, hs: '#B496C8', hg: '#8A5E70', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
-  { f: 1.00, top: '#272558', hor: '#5E4F8C', sun: '#E2C8EE', si: 0.8, hs: '#B496C8', hg: '#8A5E70', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 0.785, top: '#3D3A7A', hor: '#C47E9E', sun: '#DCCDF2', si: 0.65, hs: '#B4AEDC', hg: '#8A6684', hi: 1.4, sea: '#565897', seaFar: '#B77A98', water: '#7476B4', night: 0.85 },
+  { f: 0.84, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 1.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
 ];
 const COLOR_KEYS = ['top', 'hor', 'sun', 'hs', 'hg', 'sea', 'seaFar', 'water'];
 for (const k of KEYS) for (const n of COLOR_KEYS) k[n] = new THREE.Color(k[n]);

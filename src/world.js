@@ -746,7 +746,7 @@ export function buildWorld(scene, fx) {
 
   const world = {
     L, colliders, seats, groundHeight, terrainHeight, isWater, inDock, lampGlows, smokeSpots,
-    water, sea, wind,
+    water, sea, wind, boats: life.boats,
     seatById: (id) => seats.find((s) => s.id === id),
     update(dt, t, roomSec, env) {
       wind.value = t;
