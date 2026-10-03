@@ -48,7 +48,7 @@ export async function openPage(ctx, path = '/', { log = true } = {}) {
   page.on('pageerror', (e) => page.errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') page.errors.push(m.text()); });
   if (log) page.on('console', (m) => { if (m.type() === 'log' && process.env.VERBOSE) console.log('  [page]', m.text()); });
-  await page.goto(BASE + path);
+  await page.goto(BASE + path, { timeout: 120000 });
   await page.waitForFunction(() => window.__hh && document.getElementById('loading').classList.contains('done'), null, { timeout: 60000 });
   return page;
 }

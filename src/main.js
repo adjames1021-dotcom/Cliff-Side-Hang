@@ -5,6 +5,7 @@ import { buildWorld, L, groundHeight, isWater } from './world.js';
 import { Character, cleanAvatar, randomAvatar, SIT_DROP } from './characters.js';
 import { Effects } from './effects.js';
 import { DayNight } from './daynight.js';
+import { Creator, loadProfile, saveProfile, toast, randomName } from './ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -389,21 +390,94 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+// ---------- creator ----------
+const PREVIEW = { x: 0, z: 3.3 };
+game.preview = {
+  id: 'preview', char: new Character(me.avatar), pos: new THREE.Vector3(PREVIEW.x, groundHeight(PREVIEW.x, PREVIEW.z), PREVIEW.z),
+  yaw: 0, pose: 'idle', speed: 0, grounded: true, spin: 0,
+};
+let editing = false;
+const previewLook = new THREE.Vector3();
+game.creatorCamera = (dt, t) => {
+  const p = game.preview;
+  p.yaw = Math.sin(t * 0.6) * 0.35 + p.spin;
+  const wide = innerWidth > 700;
+  if (wide) {
+    camera.position.set(p.pos.x + 0.15, p.pos.y + 1.25, p.pos.z + 3.4);
+    previewLook.set(p.pos.x - 0.95, p.pos.y + 0.72, p.pos.z);
+  } else {
+    camera.position.set(p.pos.x, p.pos.y + 1.7, p.pos.z + 5.6);
+    previewLook.set(p.pos.x, p.pos.y - 1.35, p.pos.z);
+  }
+  camera.lookAt(previewLook);
+  setNearFar(0.1, 700);
+};
+canvas.addEventListener('pointermove', (e) => {
+  if (game.mode === 'creator' && e.buttons) game.preview.spin += e.movementX * 0.01;
+});
+
+const creator = new Creator({
+  onChange: (prof) => {
+    const prev = game.preview.char.avatar.animal;
+    game.preview.char.setAvatar(prof.avatar);
+    if (prev !== prof.avatar.animal) game.preview.char.playEmote('wave');
+  },
+  onSubmit: (kind, prof) => {
+    me.name = prof.name;
+    me.avatar = prof.avatar;
+    if (kind === 'done') {
+      me.char.setAvatar(me.avatar);
+      game.onLook?.();
+      closeCreator();
+      return;
+    }
+    me.char.setAvatar(me.avatar);
+    startPlay(kind);
+  },
+});
+
+function openCreator(edit = false) {
+  editing = edit;
+  const prof = { name: me.name, avatar: me.avatar };
+  game.preview.char.setAvatar(me.avatar);
+  game.preview.char.addTo(scene);
+  game.preview.spin = 0;
+  creator.open(prof, { editing: edit });
+  $('title').classList.add('hidden');
+  if (edit) $('hud').classList.add('hidden');
+  game.mode = 'creator';
+}
+game.openCreator = openCreator;
+
+function closeCreator() {
+  creator.close();
+  game.preview.char.removeFrom(scene);
+  if (editing) {
+    $('hud').classList.remove('hidden');
+    game.mode = 'play';
+  }
+}
+
 // ---------- start ----------
-function startPlay() {
+function startPlay(kind) {
+  closeCreator();
   $('title').classList.add('hidden');
   $('hud').classList.remove('hidden');
   if (isTouch) $('touch').classList.remove('hidden');
-  me.name = me.name || 'You';
-  spawnMe();
+  if (!game.players.has(me.id)) spawnMe();
   cam.yaw = 0;
   cam.target.set(me.pos.x, me.pos.y + 1, me.pos.z);
   game.mode = 'play';
   canvas.focus();
+  if (kind !== 'solo') toast('Rooms are coming in the next step — wandering solo for now');
 }
 
+const saved = loadProfile();
+if (saved) { me.name = saved.name; me.avatar = saved.avatar; me.char.setAvatar(me.avatar); }
+else { me.name = randomName(); }
+
 setupTouch();
-$('btn-play').addEventListener('click', startPlay);
+$('btn-play').addEventListener('click', () => openCreator(false));
 renderer.shadowMap.needsUpdate = true;
 requestAnimationFrame(frame);
 requestAnimationFrame(() => $('loading').classList.add('done'));

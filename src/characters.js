@@ -25,7 +25,8 @@ export function randomAvatar() {
 export function cleanAvatar(a = {}) {
   const animal = ANIMALS.includes(a.animal) ? a.animal : 'bear';
   const hex = (v, list, d) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : d || list[0]);
-  const acc = Array.isArray(a.acc) ? [...new Set(a.acc.filter((x) => ACCESSORIES.includes(x)))].slice(0, 2) : [];
+  let acc = Array.isArray(a.acc) ? [...new Set(a.acc.filter((x) => ACCESSORIES.includes(x)))].slice(0, 2) : [];
+  if (acc.includes('beret') && acc.includes('crown')) acc = acc.filter((x) => x !== 'crown');
   return { animal, fur: hex(a.fur, FUR, DEFAULT_FUR[animal]), outfit: hex(a.outfit, OUTFIT), acc };
 }
 
