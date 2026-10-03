@@ -36,7 +36,7 @@ const { page: B, ok: bOk } = await joinViaCreator(ctxB, 'Bob', code);
 check(bOk, 'Bob joins by typing the code');
 const link = await A.evaluate(() => window.__hh.net.inviteLink());
 check(link.includes(`#room=${code}`), 'invite link carries the room code');
-const C = await openPage(ctxC, new URL(link).pathname + new URL(link).hash);
+const C = await openPage(ctxC, new URL(link).pathname + '?norender' + new URL(link).hash); // the link as shared, minus rendering
 check(await until(C, () => window.__hh.net.status === 'online' && window.__hh.mode === 'play'), 'Cara joins automatically from the invite link');
 check(await until(A, () => window.__hh.players.size === 3), 'Alice sees three players');
 const sB = await state(B);
@@ -93,8 +93,16 @@ check(cSeat === null, 'Cara can\'t take the seat Bob is on (server says no)');
 await C.evaluate(() => window.__hh.net.send({ t: 'sit', seat: 'plaza-45-0' }));
 await sleep(800);
 check(await A.evaluate((id) => window.__hh.players.get(id)?.seat === 'plaza-45-0', bId), 'server keeps Bob in his seat when Cara tries to force it');
+// one emote at a time: sitting down waits for the wave to finish
+await A.evaluate(() => window.__hh.doEmote('sitground'));
+check(await A.evaluate(() => window.__hh.me.pose !== 'sitground'), 'Alice can\'t sit down mid-wave (one emote at a time)');
+await until(A, () => !window.__hh.me.char.emote, null, 6000);
 await A.evaluate(() => window.__hh.doEmote('sitground'));
 check(await until(B, (id) => window.__hh.players.get(id)?.pose === 'sitground', aId), 'Bob sees Alice sit on the ground');
+// one emote at a time: sitting down waits for the wave to finish
+await A.evaluate(() => window.__hh.doEmote('sitground'));
+check(await A.evaluate(() => window.__hh.me.pose !== 'sitground'), 'Alice can\'t sit down mid-wave (one emote at a time)');
+await until(A, () => !window.__hh.me.char.emote, null, 6000);
 await A.evaluate(() => window.__hh.doEmote('sitground'));
 
 // --- props ---

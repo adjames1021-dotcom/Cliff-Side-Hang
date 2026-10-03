@@ -118,7 +118,17 @@ await ev(() => { place(0, 4, Math.PI); window.__hh.cam.pitch = 0.5; });
 await sleep(400);
 await page.keyboard.press('KeyG');
 check(await ev(() => document.querySelectorAll('.ping-tag').length === 1), 'G drops a ping');
-for (const e of ['wave', 'dance', 'clap', 'laugh', 'heart', 'cheer']) await ev((x) => window.__hh.doEmote(x), e);
+// one emote at a time: a second one is ignored until the first has finished
+await ev(() => window.__hh.doEmote('wave'));
+await ev(() => window.__hh.doEmote('dance'));
+check(await ev(() => window.__hh.me.char.emote === 'wave'), 'a second emote waits for the first to finish');
+check(await ev(() => document.querySelector('#wheel .wheel-ring') && (window.__hh.emoteLocked() === true)), 'the emote wheel knows it is locked');
+for (const e of ['dance', 'clap', 'laugh', 'heart', 'cheer']) {
+  await ev(() => new Promise((r) => { const t = setInterval(() => { if (!window.__hh.me.char.emote) { clearInterval(t); r(); } }, 100); }));
+  await ev((x) => window.__hh.doEmote(x), e);
+  check(await ev((x) => window.__hh.me.char.emote === x, e), `${e} plays once the last emote is done`);
+}
+await ev(() => new Promise((r) => { const t = setInterval(() => { if (!window.__hh.me.char.emote) { clearInterval(t); r(); } }, 100); }));
 await ev(() => window.__hh.doEmote('sleep'));
 check(await ev(() => window.__hh.me.pose === 'sleep'), 'sleep emote keeps you snoozing');
 await page.keyboard.down('KeyW'); await sleep(300); await page.keyboard.up('KeyW');
