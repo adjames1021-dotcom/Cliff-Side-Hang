@@ -26,6 +26,9 @@ export const L = {
   lookout: { x: -14.5, z: -14, h: 1.3, r: 5.5 },
   telescope: { x: -16.4, z: -14.3, standX: -15.6 },
   spawn: { x: 0, z: 5.6 },
+  seaStacks: [[-26, -30, 2.2], [-29, 22, 2.8], [-23.8, 4, 1.2], [-32, -8, 1.6]],
+  lighthouse: { x: -29, z: 22, y: -0.9 },
+  windmill: { x: -3, z: -29.5 },
 };
 
 export function terrainHeight(x, z) {
@@ -87,6 +90,8 @@ export function buildWorld(scene, fx) {
   const seats = [];
   const smokeSpots = [];
   const lampGlows = [];
+  const lampPosts = [];
+  const blossoms = [];
   const R = rng(7);
   const circle = (x, z, r) => colliders.push({ c: true, x, z, r });
   const box = (x0, z0, x1, z1) => colliders.push({ c: false, x0, z0, x1, z1 });
@@ -215,7 +220,7 @@ export function buildWorld(scene, fx) {
   // sea stacks and far islands
   {
     const b = B('sea');
-    for (const [x, z, s] of [[-26, -30, 2.2], [-29, 22, 2.8], [-23.8, 4, 1.2], [-32, -8, 1.6]]) {
+    for (const [x, z, s] of L.seaStacks) {
       b.add(rbox(s * 1.5, s * 3.2, s * 1.3, s * 0.45), '#E3A77C', { pos: [x, L.seaY + s * 0.9, z], rot: [0.05, 0.4, 0.08] });
       b.add(rbox(s * 1.1, s * 1.8, s, s * 0.35), '#EDC398', { pos: [x + s * 0.9, L.seaY + s * 0.3, z + s * 0.5], rot: [0, -0.3, -0.1] });
       b.add(rbox(s * 0.9, s * 1.1, s * 0.9, s * 0.3), '#D9946A', { pos: [x - s * 0.8, L.seaY + s * 0.1, z - s * 0.4], rot: [0.1, 0.8, 0] });
@@ -305,6 +310,7 @@ export function buildWorld(scene, fx) {
       b.add(rbox(0.04, 0.36, 0.04, 0.015), C.cocoa, { pos: [x + dx, y + h + 0.24, z + dz] }, { outline: false });
     G.add(sphere(0.12, 12, 10), C.butter, { pos: [x, y + h + 0.24, z] });
     lampGlows.push({ p: new THREE.Vector3(x, y + h + 0.24, z), size: 1.5, color: C.butter });
+    lampPosts.push({ x, y, z });
     circle(x, z, 0.24);
   }
 
@@ -600,6 +606,7 @@ export function buildWorld(scene, fx) {
     const y = terrainHeight(x, z) - 0.1;
     b.add(roundCyl(0.16 * s, 1.5 * s, 0.05, 12, 0.11 * s), C.honeyDark, { pos: [x, y, z] });
     const leaf = kind === 'blossom' ? [C.pink, '#F9CBD3', C.rose] : [C.leaf, C.sage, C.leafDark];
+    if (kind === 'blossom') blossoms.push({ x, y: y + 2.1 * s, z, s });
     if (kind === 'pine') {
       for (let i = 0; i < 3; i++) b.add(lathe([[0, 0], [0.95 - i * 0.22, 0.1], [0.6 - i * 0.15, 0.55], [0, 0.85]].map(([a, c]) => [a * s, c * s]), 14), leaf[i % 3], { pos: [x, y + (1.0 + i * 0.55) * s, z] });
     } else {
@@ -626,7 +633,7 @@ export function buildWorld(scene, fx) {
       if (side === 0) { x = -19 + R() * 40; z = -20.5 - R() * 12; }
       else if (side === 1) { x = 20.5 + R() * 12; z = -20 + R() * 40; }
       else { x = -19 + R() * 40; z = 20.5 + R() * 12; }
-      if (x < -18.8) continue;
+      if (x < -18.8 || Math.hypot(x - L.windmill.x, z - L.windmill.z) < 7) continue;
       tree(b, x, z, 0.9 + R() * 0.6, R() > 0.75 ? 'pine' : R() > 0.8 ? 'blossom' : 'round');
     }
     const bushes = [[-17, 9], [-16.5, -6], [3.5, -9.5], [-3.5, -9.5], [7.5, 2.5], [17.5, 9], [17.5, -10], [-2.5, 18], [4, 13.5], [13, -15.5], [-17.5, 18.5], [18, 18]];
@@ -746,7 +753,7 @@ export function buildWorld(scene, fx) {
 
   const world = {
     L, colliders, seats, groundHeight, terrainHeight, isWater, inDock, lampGlows, smokeSpots,
-    water, sea, wind, boats: life.boats,
+    water, sea, wind, boats: life.boats, lampPosts, blossoms,
     seatById: (id) => seats.find((s) => s.id === id),
     update(dt, t, roomSec, env) {
       wind.value = t;
@@ -809,6 +816,8 @@ function makeSeaMaterial() {
       uSunDir: { value: new THREE.Vector3(-1, 0.3, 0) },
       uSunCol: { value: new THREE.Color('#FFD9A0') },
       uLight: { value: 1 },
+      uGlint: { value: 0.985 },
+      uPath: { value: 0 },
     },
     vertexShader: /* glsl */`
       varying vec3 vW;
@@ -822,7 +831,7 @@ function makeSeaMaterial() {
         #include <fog_vertex>
       }`,
     fragmentShader: /* glsl */`
-      uniform float uTime; uniform vec3 uNear; uniform vec3 uFar; uniform vec3 uHi; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform float uLight;
+      uniform float uTime; uniform vec3 uNear; uniform vec3 uFar; uniform vec3 uHi; uniform vec3 uSunDir; uniform vec3 uSunCol; uniform float uLight; uniform float uGlint; uniform float uPath;
       varying vec3 vW;
       #include <common>
       #include <fog_pars_fragment>
@@ -836,7 +845,11 @@ function makeSeaMaterial() {
         vec3 v = normalize(vW - cameraPosition);
         vec3 nrm = normalize(vec3(sin(vW.x * 0.9 + uTime) * 0.06, 1.0, sin(vW.z * 1.3 - uTime * 1.3) * 0.06));
         float s = max(dot(reflect(v, nrm), normalize(uSunDir)), 0.0);
-        col = mix(col, uSunCol, step(0.985, s) * 0.85 * step(0.0, uSunDir.y + 0.05));
+        float lit = step(0.0, uSunDir.y + 0.05);
+        // a soft column of light under the sun/moon, broken up by glinting dashes
+        vec3 flatR = reflect(v, vec3(0.0, 1.0, 0.0));
+        col += uSunCol * pow(max(dot(flatR, normalize(uSunDir)), 0.0), 40.0) * uPath * lit;
+        col = mix(col, uSunCol * 1.15, step(uGlint, s) * 0.9 * lit);
         gl_FragColor = vec4(col * uLight, 1.0);
         #include <colorspace_fragment>
         #include <fog_fragment>

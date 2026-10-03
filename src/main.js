@@ -5,6 +5,8 @@ import { buildWorld, L, groundHeight, isWater } from './world.js';
 import { Character, randomAvatar, SIT_DROP, PROP_INFO, EMOTES } from './characters.js';
 import { Effects } from './effects.js';
 import { DayNight } from './daynight.js';
+import { buildScenery } from './scenery.js';
+import { Post } from './post.js';
 import { Creator, loadProfile, toast, randomName, showPrompt, EmoteWheel, overlay } from './ui.js';
 import { Net, Chat, renderLobby, readInvite, makeCode, copyText } from './net.js';
 import { Snapshots, updateRemote, RoomClock, Shared, lerpAngle } from './sync.js';
@@ -25,17 +27,20 @@ const camera = new THREE.PerspectiveCamera(50, 1, 0.15, 700);
 const fx = new Effects(scene);
 const world = buildWorld(scene, fx);
 const sky = new DayNight(scene, renderer, world, fx);
+const scenery = buildScenery(scene, world, fx);
+const post = new Post(renderer, scene, camera);
 const net = new Net();
 const shared = new Shared();
 const clock = new RoomClock();
 const audio = new Audio();
 
 const game = {
-  scene, camera, renderer, world, fx, sky, net, shared, clock, audio,
+  scene, camera, renderer, world, fx, sky, net, shared, clock, audio, post,
   players: new Map(), mode: 'title', t: 0, maxPlayers: 8, toast,
 };
 game.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 game.noRender = new URLSearchParams(location.search).has('norender'); // headless tests only
+game.lockQuality = new URLSearchParams(location.search).has('hq'); // keep full quality (screenshots)
 window.__hh = game; // handy for debugging and the Playwright checks
 
 // ---------- local player ----------
@@ -372,6 +377,7 @@ function resize() {
   outlineUniforms.uRes.value.copy(buf);
   outlineUniforms.uThickness.value = Math.max(1.3, 1.7 * pixelRatio);
   fx.resize(buf.y, camera.fov);
+  post.setSize(w, h, pixelRatio);
 }
 game.resize = resize;
 addEventListener('resize', resize);
@@ -379,11 +385,15 @@ resize();
 
 const perf = { frames: 0, time: 0, good: 0 };
 function adaptQuality(dt) {
+  if (game.lockQuality) return;
   perf.frames++; perf.time += dt;
   if (perf.time < 2) return;
   const fps = perf.frames / perf.time;
   perf.frames = 0; perf.time = 0;
-  if (fps < 40 && pixelRatio > 0.7) { pixelRatio = Math.max(0.7, pixelRatio - 0.25); resize(); perf.good = 0; }
+  // struggling? drop the bloom first, then resolution
+  if (fps < 40 && post.enabled) { post.enabled = false; perf.good = 0; }
+  else if (fps < 40 && pixelRatio > 0.7) { pixelRatio = Math.max(0.7, pixelRatio - 0.25); resize(); perf.good = 0; }
+  else if (fps > 58 && !post.enabled) { if (++perf.good >= 6) { post.enabled = true; perf.good = 0; } }
   else if (fps > 58 && pixelRatio < maxPR) { if (++perf.good >= 4) { pixelRatio = Math.min(maxPR, pixelRatio + 0.25); resize(); perf.good = 0; } }
 }
 
@@ -903,10 +913,12 @@ function frame(now) {
 
   sky.update(clock.day(), dt, t, camera, game.mode === 'play' ? me.pos : null);
   world.update(dt, t, clock.ms() / 1000, { night: sky.night });
+  scenery.update(dt, t, clock.ms() / 1000, { night: sky.night, horizon: sky.horizon, focus: game.mode === 'play' ? me.pos : null });
+  post.setLook(sky.night, sky.golden);
   audio.update?.(dt, game);
   fx.update(dt);
   updateTags();
-  if (!game.noRender) { renderer.render(scene, camera); adaptQuality(dt); }
+  if (!game.noRender) { post.render(); adaptQuality(dt); }
   requestAnimationFrame(frame);
 }
 

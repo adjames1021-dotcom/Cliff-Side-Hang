@@ -116,8 +116,8 @@ export default function campfire(game) {
         p.g.rotation.y = t * (0.6 + i * 0.2);
       });
       const night = game.sky.night;
-      ground.material.opacity = level * (0.35 + night * 0.65);
-      halo.material.opacity = level * (0.25 + night * 0.6);
+      ground.material.opacity = level * (0.3 + night * 0.4);
+      halo.material.opacity = level * (0.18 + night * 0.32);
       ground.visible = halo.visible = level > 0.02;
       if (level > 0.3) {
         emberT -= dt; smokeT -= dt;

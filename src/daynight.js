@@ -4,16 +4,16 @@ import { C, MAT, Builder, sphere, outlineUniforms } from './toon.js';
 
 // f: 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset.
 const KEYS = [
-  { f: 0.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
-  { f: 0.20, top: '#2F2D68', hor: '#6E5A98', sun: '#D8D2F6', si: 0.8, hs: '#AAB6E0', hg: '#826A8C', hi: 1.45, sea: '#4C568F', seaFar: '#6E5E9A', water: '#6470AA', night: 0.95 },
+  { f: 0.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.7, hs: '#A9B8E2', hg: '#806A8C', hi: 1.18, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 0.20, top: '#2F2D68', hor: '#6E5A98', sun: '#D8D2F6', si: 0.68, hs: '#AAB6E0', hg: '#826A8C', hi: 1.2, sea: '#4C568F', seaFar: '#6E5E9A', water: '#6470AA', night: 0.95 },
   { f: 0.255, top: '#7E8FD0', hor: '#FFC39A', sun: '#FFB27A', si: 1.2, hs: '#D9CDE8', hg: '#EBBBA6', hi: 1.45, sea: '#8FA8D4', seaFar: '#F2C3A8', water: '#B2C8E6', night: 0.25 },
   { f: 0.31, top: '#8FC9EC', hor: '#FFF0D8', sun: '#FFF1DA', si: 1.9, hs: '#E8F1F2', hg: '#F0D6AE', hi: 1.75, sea: '#8CC8E2', seaFar: '#C4E4F0', water: '#BFE3EE', night: 0 },
   { f: 0.62, top: '#8FC9EC', hor: '#FFF0D8', sun: '#FFF1DA', si: 1.9, hs: '#E8F1F2', hg: '#F0D6AE', hi: 1.75, sea: '#8CC8E2', seaFar: '#C4E4F0', water: '#BFE3EE', night: 0 },
   { f: 0.70, top: '#86B0E0', hor: '#FFD69E', sun: '#FFCF96', si: 1.8, hs: '#F0E2E4', hg: '#F4CDA4', hi: 1.6, sea: '#94BFDD', seaFar: '#FFD8AE', water: '#C6DDEA', night: 0 },
   { f: 0.745, top: '#7071B8', hor: '#F7A27A', sun: '#FFA06A', si: 1.3, hs: '#D7B6DA', hg: '#EAAE96', hi: 1.45, sea: '#8F8FC4', seaFar: '#F7A88A', water: '#B4ACD4', night: 0.3 },
-  { f: 0.785, top: '#3D3A7A', hor: '#C47E9E', sun: '#DCCDF2', si: 0.65, hs: '#B4AEDC', hg: '#8A6684', hi: 1.4, sea: '#565897', seaFar: '#B77A98', water: '#7476B4', night: 0.85 },
-  { f: 0.84, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
-  { f: 1.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.85, hs: '#A9B8E2', hg: '#806A8C', hi: 1.45, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 0.785, top: '#3D3A7A', hor: '#C47E9E', sun: '#DCCDF2', si: 0.6, hs: '#B4AEDC', hg: '#8A6684', hi: 1.25, sea: '#565897', seaFar: '#B77A98', water: '#7476B4', night: 0.85 },
+  { f: 0.84, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.7, hs: '#A9B8E2', hg: '#806A8C', hi: 1.18, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
+  { f: 1.00, top: '#272558', hor: '#5E4F8C', sun: '#D8D2F6', si: 0.7, hs: '#A9B8E2', hg: '#806A8C', hi: 1.18, sea: '#43508A', seaFar: '#5E5490', water: '#5E6AA6', night: 1 },
 ];
 const COLOR_KEYS = ['top', 'hor', 'sun', 'hs', 'hg', 'sea', 'seaFar', 'water'];
 for (const k of KEYS) for (const n of COLOR_KEYS) k[n] = new THREE.Color(k[n]);
@@ -59,32 +59,80 @@ export class DayNight {
       uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() },
       uSunDir: { value: new THREE.Vector3() }, uSunCol: { value: new THREE.Color() },
       uMoonDir: { value: new THREE.Vector3() }, uNight: { value: 0 }, uTime: { value: 0 },
+      uGlow: { value: 0 }, uGlowCol: { value: new THREE.Color('#FF9C7C') }, uMoonVis: { value: 0 },
+      uShootA: { value: new THREE.Vector3(0, 1, 0) }, uShootB: { value: new THREE.Vector3(0, 1, 0) }, uShoot: { value: 0 },
     };
-    this.sky = new THREE.Mesh(new THREE.SphereGeometry(450, 32, 16), new THREE.ShaderMaterial({
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(450, 48, 24), new THREE.ShaderMaterial({
       uniforms: this.skyU, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: /* glsl */`
         varying vec3 vDir;
         void main() { vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
       fragmentShader: /* glsl */`
-        uniform vec3 uTop, uHor, uSunDir, uSunCol, uMoonDir; uniform float uNight, uTime;
+        uniform vec3 uTop, uHor, uSunDir, uSunCol, uMoonDir, uGlowCol, uShootA, uShootB;
+        uniform float uNight, uTime, uGlow, uMoonVis, uShoot;
         varying vec3 vDir;
         float h21(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 45758.5); }
+        float vnoise(vec2 p) {
+          vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
+        }
+        // one layer of stars on a grid wrapped round the sky
+        float stars(vec3 d, float scale, float keep, float size, float t) {
+          vec2 g = vec2(atan(d.z, d.x) * scale, asin(clamp(d.y, -1.0, 1.0)) * scale * 2.0);
+          vec2 id = floor(g), f = fract(g) - 0.5;
+          float r = h21(id);
+          if (r < keep) return 0.0;
+          vec2 o = (vec2(h21(id + 7.1), h21(id + 3.3)) - 0.5) * 0.5;
+          float l = length(f - o);
+          float s = smoothstep(size, 0.0, l);
+          s += smoothstep(size * 0.35, 0.0, abs(f.x - o.x)) * smoothstep(size * 2.6, 0.0, abs(f.y - o.y)) * 0.5;
+          s += smoothstep(size * 0.35, 0.0, abs(f.y - o.y)) * smoothstep(size * 2.6, 0.0, abs(f.x - o.x)) * 0.5;
+          return s * (0.55 + 0.45 * sin(t * (1.0 + r * 4.0) + r * 60.0));
+        }
         void main() {
           vec3 d = normalize(vDir);
           vec3 col = mix(uHor, uTop, smoothstep(0.0, 0.55, d.y));
+          // warm band along the horizon on the sun's side at sunrise/sunset
+          vec3 sunH = normalize(vec3(uSunDir.x, 0.0, uSunDir.z) + 1e-5);
+          float toward = max(dot(normalize(vec3(d.x, 0.0, d.z) + 1e-5), sunH), 0.0);
+          col += uGlowCol * exp(-abs(d.y - 0.03) * 7.0) * (0.25 + 0.75 * pow(toward, 3.0)) * uGlow;
+          // sun
           float s = dot(d, normalize(uSunDir));
           col += uSunCol * pow(max(s, 0.0), 10.0) * 0.35 * (1.0 - uNight);
-          col = mix(col, mix(vec3(1.0, 0.97, 0.86), uSunCol, 0.35), smoothstep(0.9986, 0.9990, s) * step(-0.02, d.y));
-          float m = dot(d, normalize(uMoonDir));
-          col = mix(col, vec3(1.0, 0.96, 0.86), smoothstep(0.9993, 0.9996, m) * uNight);
-          col += vec3(1.0, 0.95, 0.85) * pow(max(m, 0.0), 60.0) * 0.25 * uNight;
-          // stars
-          vec2 g = vec2(atan(d.z, d.x) * 60.0, d.y * 120.0);
-          vec2 id = floor(g), f = fract(g) - 0.5;
-          float r = h21(id);
-          float star = step(0.985, r) * smoothstep(0.18, 0.0, length(f)) * smoothstep(0.05, 0.3, d.y);
-          star *= 0.6 + 0.4 * sin(uTime * (1.0 + r * 3.0) + r * 50.0);
-          col += vec3(1.0, 0.95, 0.85) * star * uNight;
+          col += uSunCol * pow(max(s, 0.0), 300.0) * 0.6 * (1.0 - uNight);
+          col = mix(col, mix(vec3(1.25, 1.18, 1.0), uSunCol * 1.3, 0.35), smoothstep(0.9984, 0.9988, s) * step(-0.02, d.y));
+          // night sky: milky way, stars, moon, shooting stars
+          if (uNight > 0.01) {
+            float up = smoothstep(-0.02, 0.25, d.y) * smoothstep(0.45, 0.9, uNight);
+            vec3 bn = normalize(vec3(0.35, 0.5, 0.79));
+            float band = exp(-pow(dot(d, bn) / 0.2, 2.0));
+            vec2 bp = vec2(atan(d.z, d.x), d.y) * 6.0;
+            float cloud = vnoise(bp) * 0.6 + vnoise(bp * 2.3 + 4.0) * 0.4;
+            col += vec3(0.75, 0.62, 0.95) * band * (0.35 + 0.65 * cloud) * 0.22 * uNight * up;
+            float st = stars(d, 70.0, 0.955 - band * 0.05, 0.16, uTime) * 0.8 + stars(d, 26.0, 0.975, 0.11, uTime * 0.7) * 1.6;
+            vec3 tint = mix(vec3(1.0, 0.9, 0.8), vec3(0.85, 0.9, 1.0), h21(floor(d.xz * 40.0)));
+            col += tint * st * uNight * up;
+            float m = dot(d, normalize(uMoonDir));
+            vec3 mx = normalize(cross(uMoonDir, vec3(0.0, 1.0, 0.0)));
+            vec3 my = cross(mx, normalize(uMoonDir));
+            vec2 mp = vec2(dot(d, mx), dot(d, my)) / 0.042;
+            float crater = smoothstep(0.26, 0.18, length(mp - vec2(0.3, 0.22))) * 0.13
+                         + smoothstep(0.17, 0.1, length(mp - vec2(-0.36, -0.08))) * 0.11
+                         + smoothstep(0.13, 0.07, length(mp - vec2(0.06, -0.46))) * 0.1
+                         + smoothstep(0.1, 0.05, length(mp - vec2(-0.2, 0.42))) * 0.08;
+            vec3 moonCol = vec3(1.28, 1.2, 1.05) * (1.0 - crater);
+            col += vec3(0.95, 0.85, 1.0) * (pow(max(m, 0.0), 900.0) * 0.45 + pow(max(m, 0.0), 40.0) * 0.14) * uMoonVis;
+            col = mix(col, moonCol, smoothstep(0.99905, 0.99925, m) * uMoonVis);
+            if (uShoot > 0.0 && uShoot < 1.0) {
+              vec3 head = normalize(mix(uShootA, uShootB, uShoot));
+              vec3 tail = normalize(mix(uShootA, uShootB, max(0.0, uShoot - 0.3)));
+              vec3 ab = head - tail;
+              float h = clamp(dot(d - tail, ab) / dot(ab, ab), 0.0, 1.0);
+              float dist = length(d - tail - ab * h);
+              float streak = smoothstep(0.0022, 0.0, dist) * h * sin(uShoot * 3.14159);
+              col += vec3(1.2, 1.1, 1.0) * streak * uNight;
+            }
+          }
           gl_FragColor = vec4(col, 1.0);
           #include <colorspace_fragment>
         }`,
@@ -92,15 +140,24 @@ export class DayNight {
     this.sky.frustumCulled = false;
     this.sky.renderOrder = -10;
     scene.add(this.sky);
+    this.shoot = { t: -1, wait: 6 };
 
-    // puffy clouds orbiting slowly
+    // fluffy flat-bottomed clouds, plus long low streaks over the sea that catch the sunset
     const cb = new Builder();
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2 + Math.random() * 0.3, r = 170 + Math.random() * 70, y = 45 + Math.random() * 35;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r, s = 6 + Math.random() * 6;
-      for (let j = 0; j < 5; j++) {
-        cb.add(sphere(s * (0.6 + Math.random() * 0.5), 12, 8), C.cream2, { pos: [x + (j - 2) * s * 0.75, y + Math.random() * s * 0.4, z + (Math.random() - 0.5) * s], scale: [1, 0.75, 1] });
+    const rnd = Math.random;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + rnd() * 0.3, r = 160 + rnd() * 90, y = 42 + rnd() * 40;
+      const x = Math.cos(a) * r, z = Math.sin(a) * r, s = 6 + rnd() * 7;
+      const n = 5 + Math.floor(rnd() * 4);
+      for (let j = 0; j < n; j++) {
+        const rr = s * (0.55 + rnd() * 0.55);
+        const off = (j - (n - 1) / 2) * s * 0.62;
+        cb.add(sphere(rr, 12, 8), j % 3 ? C.cream2 : '#FFF8EE', { pos: [x - Math.sin(a) * off, y + rr * 0.35 + (j % 2) * s * 0.25, z + Math.cos(a) * off + (rnd() - 0.5) * s * 0.6], scale: [1, 0.72, 1] });
       }
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = Math.PI + (i - 2.5) * 0.28, r = 190 + rnd() * 60, y = 18 + rnd() * 16;
+      cb.add(sphere(10, 12, 6), '#FFF3E6', { pos: [Math.cos(a) * r, y, Math.sin(a) * r], rot: [0, -a, 0], scale: [0.6, 0.22, 4.5] }, { outline: false });
     }
     this.clouds = cb.build({ outline: true, receiveShadow: false });
     this.clouds.traverse((o) => { o.frustumCulled = false; });
@@ -122,7 +179,12 @@ export class DayNight {
     this.night = k.night;
     DayNight.sunDirection(f, this.sunDir);
     const sd = this.sunDir;
-    const moon = new THREE.Vector3(-sd.x, -sd.y, 0.45).normalize();
+    // the moon crosses the sky over the sea through the night
+    const prog = THREE.MathUtils.clamp((((f - 0.76) % 1) + 1) % 1 / 0.48, 0, 1);
+    const el = Math.sin(Math.PI * prog) * 0.4 + 0.05 - (prog <= 0 || prog >= 1 ? 0.2 : 0);
+    const az = 0.75 - 1.5 * prog;
+    const moon = new THREE.Vector3(-Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el)).normalize();
+    this.moonDir = moon;
     const sunUp = THREE.MathUtils.smoothstep(sd.y, -0.03, 0.08);
     const moonUp = THREE.MathUtils.smoothstep(moon.y, -0.03, 0.12);
     const useSun = sd.y > -0.03;
@@ -147,12 +209,39 @@ export class DayNight {
     u.uTop.value.copy(k.top); u.uHor.value.copy(k.hor);
     u.uSunDir.value.copy(sd); u.uSunCol.value.copy(k.sun);
     u.uMoonDir.value.copy(moon); u.uNight.value = k.night; u.uTime.value = t;
+    const golden = Math.max(
+      THREE.MathUtils.smoothstep(f, 0.66, 0.74) * (1 - THREE.MathUtils.smoothstep(f, 0.76, 0.8)),
+      THREE.MathUtils.smoothstep(f, 0.21, 0.25) * (1 - THREE.MathUtils.smoothstep(f, 0.27, 0.31)));
+    this.golden = golden;
+    this.horizon = k.hor;
+    u.uGlow.value = golden * 0.9;
+    u.uMoonVis.value = k.night * THREE.MathUtils.smoothstep(moon.y, -0.02, 0.06);
+    // now and then a shooting star
+    const sh = this.shoot;
+    if (k.night > 0.7) {
+      if (sh.t < 0) {
+        sh.wait -= dt;
+        if (sh.wait <= 0) {
+          const a0 = Math.random() * Math.PI * 2, e0 = 0.45 + Math.random() * 0.4;
+          const A = new THREE.Vector3(Math.cos(a0) * Math.cos(e0), Math.sin(e0), Math.sin(a0) * Math.cos(e0));
+          const B = A.clone().add(new THREE.Vector3(Math.cos(a0 + 1.6) * 0.32, -0.16, Math.sin(a0 + 1.6) * 0.32)).normalize();
+          u.uShootA.value.copy(A); u.uShootB.value.copy(B);
+          sh.t = 0;
+        }
+      } else {
+        sh.t += dt / 1.1;
+        if (sh.t >= 1) { sh.t = -1; sh.wait = 7 + Math.random() * 14; }
+      }
+    }
+    u.uShoot.value = sh.t;
     this.sky.position.copy(camera.position);
     this.clouds.rotation.y = t * 0.002;
 
     const sea = this.world.sea.uniforms;
     sea.uNear.value.copy(k.sea); sea.uFar.value.copy(k.seaFar);
-    sea.uSunDir.value.copy(sd); sea.uSunCol.value.copy(k.sun).lerp(new THREE.Color('#ffffff'), 0.3);
+    // by day the sun draws a dashed path on the sea; by night the moon does
+    if (sd.y > -0.02) { sea.uSunDir.value.copy(sd); sea.uSunCol.value.copy(k.sun).lerp(new THREE.Color('#ffffff'), 0.3); sea.uGlint.value = 0.985; sea.uPath.value = 0.12 * (1 - k.night); }
+    else { sea.uSunDir.value.copy(moon); sea.uSunCol.value.set('#FFF4DC'); sea.uGlint.value = 0.99; sea.uPath.value = 0.35 * k.night; }
     sea.uLight.value = 1 - 0.3 * k.night;
     const w = this.world.water.uniforms;
     w.uLight.value = 1 - 0.3 * k.night;
@@ -162,7 +251,7 @@ export class DayNight {
 
     // lamps, windows, ink
     MAT.glow.color.setScalar(0.85 + 0.15 * k.night);
-    this.glows.set(THREE.MathUtils.smoothstep(k.night, 0.15, 0.7));
+    this.glows.set(THREE.MathUtils.smoothstep(k.night, 0.15, 0.7) * 0.8);
     outlineUniforms.uInk.value.set(C.ink).multiplyScalar(1 - 0.25 * k.night);
 
     // fireflies at night, dust motes in the golden light
@@ -170,7 +259,7 @@ export class DayNight {
       if (k.night > 0.6) {
         this.firefly -= dt;
         if (this.firefly <= 0) {
-          this.firefly = 0.25;
+          this.firefly = 0.1;
           const spots = [[10, 9, 6], [-8, 10, 6], [-11.5, -3, 4], [0, 0, 9], [focus.x, focus.z, 7]];
           const [x, z, r] = spots[Math.floor(Math.random() * spots.length)];
           const px = x + (Math.random() - 0.5) * r * 2, pz = z + (Math.random() - 0.5) * r * 2;

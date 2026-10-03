@@ -227,6 +227,9 @@ export class Effects {
       case 'mote':
         this.p(this.add, { x, y, z, vx: rnd(-0.05, 0.05), vy: rnd(-0.02, 0.04), vz: rnd(-0.05, 0.05), life: rnd(4, 6), size: rnd(0.035, 0.06), tile: T.glow, color: '#FFE9B0', a: opts.a ?? 0.6, wob: 0.12, hold: 0.7, fadeIn: 0.3 });
         break;
+      case 'petal':
+        this.p(this.norm, { x, y, z, vx: rnd(0.15, 0.45), vy: rnd(-0.35, -0.2), vz: rnd(-0.2, 0.2), life: rnd(4, 6), size: rnd(0.06, 0.09), tile: T.confetti, color: pick([C.pink, '#F9CBD3', '#FFE4EA']), wob: 0.9, hold: 0.75, fadeIn: 0.1 });
+        break;
       case 'ring':
         this.p(this.add, { x, y, z, life: 0.6, size: 0.5, grow: 1.4, tile: T.glow, color: opts.color || C.butter, a: 0.8 });
         break;
