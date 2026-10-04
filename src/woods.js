@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Builder, rbox, sphere, capsule, torus, lathe, roundCyl, rng, MAT } from './toon.js';
 import { DETAIL, registerMesh } from './materials.js';
 import { W, TRAILS, CREEK, BRIDGE, trailAt, creekAt, wildWater } from './wilds.js';
+import { noiseRock } from './foliage.js';
 
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -740,7 +741,8 @@ export function buildWoods(ctx) {
             t.add(capsule(r * 0.22, r * (1.4 + R() * 2.2), 2, 6), bark, { pos: [along, r * 0.35, side * r * 0.9], rot: [side * (1.0 + R() * 0.5), R(), 0] }, { mat: 'wood' });
           }
           // the root plate torn up with the tree, still clotted with earth
-          t.add(roundCyl(r * 3.2, r * 0.9, r * 0.4, 14), '#5A4532', { pos: [-L / 2 - r * 0.2, r * 0.6, 0], rot: [0, 0, Math.PI / 2] }, { mat: 'ground' });
+          t.add(noiseRock(R, 1), '#5A4532', { pos: [-L / 2 - r * 0.25, r * 0.7, 0], scale: [r * 0.75, r * 2.7, r * 3.1] }, { mat: 'ground' });
+          t.add(noiseRock(R, 1), '#4E6B30', { pos: [-L / 2 - r * 0.05, r * 2.6, 0], scale: [r * 0.6, r * 0.6, r * 2.2] }, { mat: 'foliage', outline: false });
           for (let k = 0; k < 7; k++) {
             const a = (k / 7) * Math.PI * 2 + R() * 0.4;
             t.add(capsule(r * 0.16, r * (1.6 + R()), 2, 5), '#4E3A2A', { pos: [-L / 2 - r * 0.45, r * 0.6 + Math.sin(a) * r * 2.6, Math.cos(a) * r * 2.6], rot: [a, 0, 0.4] }, { mat: 'wood' });
