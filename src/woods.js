@@ -706,7 +706,7 @@ export function buildWoods(ctx) {
       const cx = 24 + R() * 46, cz = (R() - 0.5) * 136;
       const yaw = R() * Math.PI, L = 4.5 + R() * 4.5, r = 0.2 + R() * 0.17;
       const ux = Math.cos(yaw), uz = -Math.sin(yaw);
-      let ok = true;
+      let ok = !FALLEN.some((f) => Math.hypot(f.x - cx, f.z - cz) < (f.len + L) * 0.5 + 2);
       for (let k = -1; k <= 1.001 && ok; k += 0.25) {
         const x = cx + ux * L * 0.5 * k, z = cz + uz * L * 0.5 * k;
         const tr = trailAt(x, z), c = creekAt(x, z);

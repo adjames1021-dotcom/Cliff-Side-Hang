@@ -108,6 +108,15 @@ function stackGeo(R, s, h) {
 
 // Where the cliff face is (x) at height y along the coast. r: row (0 = the turf lip at the top).
 // Positive "out" pushes rock west toward the sea.
+// smooth value noise in 0..1 (for rock that doesn't repeat)
+const vhash = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
+function vnoise(x, y) {
+  const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  const a = vhash(i, j), b = vhash(i + 1, j), c = vhash(i, j + 1), d = vhash(i + 1, j + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
 export function cliffFaceX(z, y, top, r = 99) {
   const lipOut = 0.35 * (0.5 + 0.5 * Math.sin(z * 0.23 + 1.0)) + 0.12 * Math.sin(z * 0.9); // the edge wanders in plan
   if (r === 0) return -19.6 - Math.max(0, lipOut);
@@ -120,11 +129,12 @@ export function cliffFaceX(z, y, top, r = 99) {
   // buttresses and gullies
   const grow = smooth(0.4, 2.2, depth);
   out += grow * (0.85 * Math.sin(z * 0.37 + 1.7 * Math.sin(z * 0.11)) + 0.35 * Math.sin(z * 1.13 + 0.6) + 0.5) * (1 - cove * 0.75);
-  // strata standing out as ledges with sharp tops
-  const sv = (((y - 0.03 * z) / 1.3) % 1 + 1) % 1;
-  out += grow * 0.36 * smooth(0.68, 0.96, sv) * (1 - cove * 0.4);
-  // crags
-  out += grow * (0.22 * Math.sin(z * 2.3 + y * 1.7) + 0.14 * Math.sin(z * 4.1 - y * 3.3) + 0.08 * Math.sin(z * 7.3 + y * 5.1));
+  // strata standing out as ledges with sharp tops: wavy, and some beds jut out more than others along their length
+  const sy = (y - 0.03 * z + 0.45 * (vnoise(z * 0.12, 3.7) - 0.5)) / 1.3;
+  const sv = sy - Math.floor(sy);
+  out += grow * 0.42 * smooth(0.68, 0.96, sv) * (0.25 + 0.95 * vnoise(z * 0.21, Math.floor(sy) * 1.7)) * (1 - cove * 0.4);
+  // crags and blocks (noise, so nothing repeats)
+  out += grow * (0.42 * (vnoise(z * 0.33, y * 0.42) - 0.5) + 0.22 * (vnoise(z * 0.8 + 17, y * 1.0) - 0.5) + 0.1 * (vnoise(z * 1.6 + 41, y * 1.9) - 0.5));
   // the foot bulges out into a talus slope
   out += k * 1.25 * (1 - cove) + smooth(-6.5, -9.0, y) * 0.9 * (1 - cove * 0.8);
   let x = -19.6 - out;
