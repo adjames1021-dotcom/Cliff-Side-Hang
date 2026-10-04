@@ -219,7 +219,8 @@ export function buildWorld(scene, fx) {
   const cPlaza = new THREE.Color('#8E8579'), cHill = new THREE.Color('#5A8638'), cHill2 = new THREE.Color('#7A9A4A');
   const cFloor = new THREE.Color('#4F5A2C'), cFloor2 = new THREE.Color('#5E5232'), cTrail = new THREE.Color('#8C7556'), cTrailEdge = new THREE.Color('#6B5A40');
   const cBank = new THREE.Color('#6E6450'), cMud = new THREE.Color('#5A4E3C'), cRock = new THREE.Color('#857C70'), cMeadow = new THREE.Color('#7FA54C');
-  const woodsPlan = planWoods({ terrainHeight, avoid: (x, z) => nearHome(x, z, 4.4) || Math.hypot(x - L.windmill.x, z - L.windmill.z) < 7 || Math.hypot(x - WILD.cabin.x, z - WILD.cabin.z) < 7.5 || Math.hypot(x - WILD.ruins.x, z - WILD.ruins.z) < 7 || Math.hypot(x - WILD.summit.x, z - WILD.summit.z) < 6 || Math.hypot(x - WILD.fairy.x, z - WILD.fairy.z) < 5 });
+  const woodsAvoid = (x, z) => nearHome(x, z, 4.4) || Math.hypot(x - L.windmill.x, z - L.windmill.z) < 7 || Math.hypot(x - WILD.cabin.x, z - WILD.cabin.z) < 7.5 || Math.hypot(x - WILD.ruins.x, z - WILD.ruins.z) < 7 || Math.hypot(x - WILD.summit.x, z - WILD.summit.z) < 6 || Math.hypot(x - WILD.fairy.x, z - WILD.fairy.z) < 5;
+  const woodsPlan = planWoods({ terrainHeight, avoid: woodsAvoid });
   // how shaded by the canopy a spot is (for the forest floor colour)
   const canopyCell = new Map();
   for (const t of woodsPlan) { const k = Math.floor(t.x / 4) * 1000 + Math.floor(t.z / 4); canopyCell.set(k, (canopyCell.get(k) || 0) + 1); }
@@ -1190,7 +1191,7 @@ export function buildWorld(scene, fx) {
   // ---------- the woods and the cove ----------
   const wildTime = { value: 0 };
   const wild = { flags: [], mist: [], lamps: [], fireflySpots: [], floaters: [] };
-  const wctx = { scene, fol, terrainHeight, circle, seats, lampGlows, smokeSpots, G, windows: W, trees: woodsPlan, time: wildTime, ...wild };
+  const wctx = { scene, fol, terrainHeight, avoid: woodsAvoid, nearHome, circle, seats, lampGlows, smokeSpots, G, windows: W, trees: woodsPlan, time: wildTime, ...wild };
   buildWoods(wctx);
   buildCove(wctx);
   {

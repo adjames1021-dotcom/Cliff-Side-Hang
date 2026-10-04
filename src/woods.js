@@ -199,7 +199,7 @@ export const FALLEN = [];
 
 // ---------- build everything ----------
 export function buildWoods(ctx) {
-  const { scene, fol, terrainHeight, circle, seats, lampGlows, smokeSpots, G, windows, trees, time } = ctx;
+  const { scene, fol, terrainHeight, avoid = () => false, nearHome = () => false, circle, seats, lampGlows, smokeSpots, G, windows, trees, time } = ctx;
   const R = rng(5150);
   const b = new Builder(); // structures
   const near = (x, z, list, r) => list.some((p) => Math.hypot(p.x - x, p.z - z) < r);
@@ -702,7 +702,7 @@ export function buildWoods(ctx) {
   {
     const standing = trees.filter((t) => !t.far);
     let placed = 0;
-    for (let tries = 0; tries < 400 && placed < 26; tries++) {
+    for (let tries = 0; tries < 900 && placed < 24; tries++) {
       const cx = 24 + R() * 46, cz = (R() - 0.5) * 136;
       const yaw = R() * Math.PI, L = 4.5 + R() * 4.5, r = 0.2 + R() * 0.17;
       const ux = Math.cos(yaw), uz = -Math.sin(yaw);
@@ -712,7 +712,8 @@ export function buildWoods(ctx) {
         const tr = trailAt(x, z), c = creekAt(x, z);
         if ((tr && tr.d < 2.6) || (c && c.d < c.hw + 1.5) || wildWater(x, z)) ok = false;
         else if (Math.hypot(x - W.meadow.x, z - W.meadow.z) < W.meadow.r + 1.5 || Math.hypot(x - W.pool.x, z - W.pool.z) < W.pool.r + 3) ok = false;
-        else if (Math.max(x - 71, Math.abs(z) - 71) > 0) ok = false;
+        else if (Math.max(x - 71, Math.abs(z) - 71) > 0 || Math.max(x - 30, Math.abs(z) - 30) < 0) ok = false; // deep woods only
+        else if (avoid(x, z) || nearHome(x, z, 9)) ok = false;
         else if (standing.some((t) => Math.abs(t.x - x) < 1.2 && Math.abs(t.z - z) < 1.2)) ok = false;
       }
       if (!ok) continue;
