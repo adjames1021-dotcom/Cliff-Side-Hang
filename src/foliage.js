@@ -191,7 +191,7 @@ export class Foliage {
       for (let i = 0; i < 4; i++) {
         const cy = y + h + 0.1 + i * 0.75 * s, r = (1.25 - i * 0.26) * s;
         const c = new THREE.Vector3(x, cy, z);
-        ch.blobs.add(pineTier(r * 0.85, 1.1 * s, R() * 6.28), '#1F3B27', { pos: [x, cy + 0.2 * s, z], rot: [0, R() * 6.28, 0] }, { mat: 'foliage' });
+        ch.blobs.add(pineTier(r * 0.85, 1.1 * s, R() * 6.28), '#24432C', { pos: [x, cy + 0.2 * s, z], rot: [0, R() * 6.28, 0] }, { mat: 'foliage' });
         this.addCards(ch, 'needle', c, r, 0.55 * s, r, Math.round(46 * r * r), 0.62 * s, greens);
       }
       return;
