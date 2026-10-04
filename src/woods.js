@@ -159,12 +159,14 @@ export function fallSheet(top, bottom, width, out = 0.6, segs = 14) {
 export function planWoods({ terrainHeight, avoid }) {
   const R = rng(4242);
   const trees = [];
-  const step = 3.0;
-  for (let gx = -18; gx < 60; gx += step) for (let gz = -60; gz < 60; gz += step) {
+  const step = 2.6;
+  for (let gx = -18; gx < 72; gx += step) for (let gz = -72; gz < 72; gz += step) {
     const x = gx + R() * step * 0.9, z = gz + R() * step * 0.9;
     if (x < -17.6) continue;
     if (Math.abs(z) < 20.8 && x < 20.8) continue; // the village
-    const dens = 0.5 + 0.35 * Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09) + 0.2 * Math.sin(x * 0.31 - z * 0.27);
+    // denser the further you go from the village, with glades here and there
+    const far = Math.min(1, Math.max(0, (Math.hypot(Math.max(0, x - 19.5), Math.max(0, Math.abs(z) - 19.5)) - 6) / 25));
+    const dens = 0.42 + 0.3 * far + 0.3 * Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09) + 0.18 * Math.sin(x * 0.31 - z * 0.27);
     if (R() > dens) continue;
     const tr = trailAt(x, z);
     if (tr && tr.d < 2.4) continue;
@@ -177,17 +179,23 @@ export function planWoods({ terrainHeight, avoid }) {
     const n = Math.sin(x * 0.07 - z * 0.05) * 0.5 + 0.5;
     let kind = y > 5.5 || n > 0.72 ? 'pine' : (c && c.d < 7) || (n < 0.18 && R() < 0.6) ? 'birch' : 'round';
     if (kind === 'round' && R() < 0.05) kind = 'blossom';
-    trees.push({ x, z, y, s: (kind === 'pine' ? 1.0 : 0.95) + R() * 0.55, kind });
+    // a mix of ages: saplings, ordinary trees and big old ones
+    const age = R();
+    const s = age < 0.2 ? 0.5 + R() * 0.2 : age > 0.85 ? 1.55 + R() * 0.5 : (kind === 'pine' ? 1.0 : 0.95) + R() * 0.5;
+    trees.push({ x, z, y, s, kind });
   }
   // pines climbing the mountains round the edge (just scenery: you can't get up there)
-  for (let gx = -18; gx < 84; gx += 4.2) for (let gz = -84; gz < 84; gz += 4.2) {
+  for (let gx = -18; gx < 96; gx += 4.2) for (let gz = -96; gz < 96; gz += 4.2) {
     const x = gx + R() * 3.5, z = gz + R() * 3.5;
-    const edge = Math.max(x - 60.5, Math.abs(z) - 60.5);
+    const edge = Math.max(x - 72.5, Math.abs(z) - 72.5);
     if (edge < 0 || edge > 22 || x < -17.6 || R() > 0.62 - edge * 0.012) continue;
     trees.push({ x, z, y: terrainHeight(x, z), s: 1.1 + R() * 0.6, kind: R() < 0.85 ? 'pine' : 'round', far: true });
   }
   return trees;
 }
+
+// where the fallen trees ended up (filled in by buildWoods)
+export const FALLEN = [];
 
 // ---------- build everything ----------
 export function buildWoods(ctx) {
@@ -203,7 +211,7 @@ export function buildWoods(ctx) {
   }
   // undergrowth: ferns and bushes under the canopy, mossy rocks, stumps
   const nearTrees = trees.filter((t) => !t.far);
-  for (let i = 0; i < 900; i++) {
+  for (let i = 0; i < 1900; i++) {
     const t = nearTrees[Math.floor(R() * nearTrees.length)];
     if (!t) break;
     const a = R() * Math.PI * 2, r = 1.0 + R() * 2.6;
@@ -687,6 +695,66 @@ export function buildWoods(ctx) {
       const sx = px + tx * lx, sz = pz + tz * lx;
       seats.push({ id: `trail-log-${tid}-${lx < 0 ? 0 : 1}`, kind: 'log', x: sx, y: y + 0.42, z: sz, yaw: face });
       circle(sx, sz, 0.3);
+    }
+  }
+
+  // ---- fallen trees: old mossy trunks lying in the deep woods, roots and all ----
+  {
+    const standing = trees.filter((t) => !t.far);
+    let placed = 0;
+    for (let tries = 0; tries < 400 && placed < 26; tries++) {
+      const cx = 24 + R() * 46, cz = (R() - 0.5) * 136;
+      const yaw = R() * Math.PI, L = 4.5 + R() * 4.5, r = 0.2 + R() * 0.17;
+      const ux = Math.cos(yaw), uz = -Math.sin(yaw);
+      let ok = true;
+      for (let k = -1; k <= 1.001 && ok; k += 0.25) {
+        const x = cx + ux * L * 0.5 * k, z = cz + uz * L * 0.5 * k;
+        const tr = trailAt(x, z), c = creekAt(x, z);
+        if ((tr && tr.d < 2.6) || (c && c.d < c.hw + 1.5) || wildWater(x, z)) ok = false;
+        else if (Math.hypot(x - W.meadow.x, z - W.meadow.z) < W.meadow.r + 1.5 || Math.hypot(x - W.pool.x, z - W.pool.z) < W.pool.r + 3) ok = false;
+        else if (Math.max(x - 71, Math.abs(z) - 71) > 0) ok = false;
+        else if (standing.some((t) => Math.abs(t.x - x) < 1.2 && Math.abs(t.z - z) < 1.2)) ok = false;
+      }
+      if (!ok) continue;
+      const x0 = cx - ux * L / 2, z0 = cz - uz * L / 2, x1 = cx + ux * L / 2, z1 = cz + uz * L / 2;
+      const h0 = terrainHeight(x0, z0), h1 = terrainHeight(x1, z1);
+      if (Math.abs(h1 - h0) / L > 0.3) continue;
+      placed++;
+      FALLEN.push({ x: cx, z: cz, yaw, len: L });
+      const pitch = Math.atan2(h1 - h0, L), cy = (h0 + h1) / 2 + r * 0.7;
+      const bark = ['#5E4A38', '#6B5A48', '#574536'][placed % 3];
+      b.group({ pos: [cx, cy, cz], rot: [0, yaw, 0] }, (g) => {
+        g.group({ rot: [0, 0, pitch] }, (t) => {
+          // the trunk, a moss blanket along its top, and a splintered tip
+          t.add(capsule(r, L, 4, 14), bark, { rot: [0, 0, Math.PI / 2] }, { mat: 'wood' });
+          t.add(capsule(r, L * 0.82, 4, 14), '#5C7A36', { pos: [-L * 0.04, r * 0.3, 0], rot: [0, 0, Math.PI / 2], scale: [0.78, 1, 1.05] }, { mat: 'foliage', outline: false });
+          t.add(lathe([[0, 0], [r * 0.9, 0], [r * 0.5, r * 1.1], [0, r * 1.8]], 9), '#7D6650', { pos: [L / 2 + r * 0.6, 0, 0], rot: [0, 0, -Math.PI / 2] }, { mat: 'wood' });
+          // branch stubs
+          for (let k = 0; k < 4; k++) {
+            const along = (R() - 0.3) * L * 0.7, side = R() < 0.5 ? -1 : 1;
+            t.add(capsule(r * 0.22, r * (1.4 + R() * 2.2), 2, 6), bark, { pos: [along, r * 0.35, side * r * 0.9], rot: [side * (1.0 + R() * 0.5), R(), 0] }, { mat: 'wood' });
+          }
+          // the root plate torn up with the tree, still clotted with earth
+          t.add(roundCyl(r * 3.2, r * 0.9, r * 0.4, 14), '#5A4532', { pos: [-L / 2 - r * 0.2, r * 0.6, 0], rot: [0, 0, Math.PI / 2] }, { mat: 'ground' });
+          for (let k = 0; k < 7; k++) {
+            const a = (k / 7) * Math.PI * 2 + R() * 0.4;
+            t.add(capsule(r * 0.16, r * (1.6 + R()), 2, 5), '#4E3A2A', { pos: [-L / 2 - r * 0.45, r * 0.6 + Math.sin(a) * r * 2.6, Math.cos(a) * r * 2.6], rot: [a, 0, 0.4] }, { mat: 'wood' });
+          }
+        });
+      });
+      // a hollow where the roots came up, ferns and mushrooms along it, and something to bump into
+      for (let k = -0.5; k <= 0.5001; k += 0.9 / Math.max(2, Math.round(L / 0.9))) circle(cx + ux * L * k, cz + uz * L * k, r + 0.08);
+      circle(x0 - ux * r * 0.3, z0 - uz * r * 0.3, r * 2.4);
+      for (let k = 0; k < 4; k++) {
+        const along = (R() - 0.5) * L * 0.8, side = R() < 0.5 ? -1 : 1;
+        const fx = cx + ux * along - uz * side * (r + 0.4), fz = cz + uz * along + ux * side * (r + 0.4);
+        fol.fern(fx, terrainHeight(fx, fz), fz, 0.6 + R() * 0.4);
+      }
+      for (let k = 0; k < 3; k++) {
+        const along = (R() - 0.5) * L * 0.6, my = cy + (h1 - h0) * along / L + r * 0.8;
+        const mx = cx + ux * along - uz * r * 0.7, mz = cz + uz * along + ux * r * 0.7;
+        b.add(sphere(0.06, 10, 6), '#C9A77A', { pos: [mx, my, mz], scale: [1, 0.35, 1], rot: [0.9, yaw, 0] }, { mat: 'paint', outline: false });
+      }
     }
   }
 

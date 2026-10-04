@@ -176,7 +176,7 @@ function buildParts(av) {
 
   // ---- torso: a fur body in a knitted jumper ----
   const torso = new Builder();
-  torso.add(sphere(0.245, 28, 20), light, { pos: [0, 0.12, 0], scale: [0.98, 1, 0.9] }, FUR_M);
+  torso.add(sphere(0.235, 28, 20), fur, { pos: [0, 0.1, 0], scale: [0.95, 0.88, 0.88] }, FUR_M);
   const jumper = lathe([[0.226, -0.005], [0.25, 0.04], [0.262, 0.12], [0.258, 0.2], [0.236, 0.28], [0.19, 0.35], [0.13, 0.4], [0.09, 0.425]], 32);
   torso.add(jumper, outfit, { pos: [0, 0, 0], scale: [1, 1, 0.92] }, FAB);
   for (const y of [0.125, 0.19]) torso.add(torus(0.262, 0.011, 6, 40), stripe, { pos: [0, y, 0], rot: [Math.PI / 2, 0, 0], scale: [1.0, 0.92, 1] }, { outline: false, mat: 'fabric' });
@@ -206,7 +206,7 @@ function buildParts(av) {
   // ---- head ----
   const head = new Builder();
   head.add(sphere(0.33, 34, 24), fur, { pos: [0, c, 0], scale: [1.1, 0.95, 1] }, FUR_M);
-  for (const s of [-1, 1]) head.add(sphere(0.17, 20, 14), fur, { pos: [s * 0.19, c - 0.085, 0.1], scale: [1, 0.85, 1] }, FUR_M); // chubby cheeks
+  for (const s of [-1, 1]) head.add(sphere(0.14, 20, 14), fur, { pos: [s * 0.16, c - 0.09, 0.1], scale: [1, 0.8, 1] }, FUR_M); // soft cheeks
   head.add(sphere(0.125, 24, 16), light, { pos: [0, c - 0.088, 0.262], scale: [1.28, 0.86, 0.78] }, FUR_M);
   const noseCol = av.animal === 'bunny' || av.animal === 'cat' ? '#E58A9B' : '#2E1C14';
   head.add(sphere(0.046, 18, 12), noseCol, { pos: [0, c - 0.038, 0.352], scale: [1.32, 0.86, 0.8] }, { outline: false, mat: 'glossy' });
@@ -216,13 +216,7 @@ function buildParts(av) {
     head.add(torus(0.022, 0.0065, 6, 12, Math.PI), '#3A2418', { pos: [s * 0.022, c - 0.1, 0.33], rot: [0.25, 0, Math.PI] }, { outline: false, mat: 'paint' });
   }
   head.add(capsule(0.005, 0.03, 2, 6), '#3A2418', { pos: [0, c - 0.072, 0.345], rot: [0.3, 0, 0] }, { outline: false, mat: 'paint' });
-  if (av.animal === 'cat' || av.animal === 'fox') {
-    for (const s of [-1, 1]) for (const k of [-1, 0, 1]) {
-      head.add(capsule(0.0025, 0.12, 2, 4), '#FFFFFF', { pos: [s * 0.17, c - 0.07 + k * 0.018, 0.3], rot: [0, s * 0.35, Math.PI / 2 + k * 0.15 * s] }, { outline: false, mat: 'glossy' });
-    }
-  }
   if (av.animal === 'fox') for (const s of [-1, 1]) head.add(sphere(0.12, 16, 12), '#FFF3DC', { pos: [s * 0.16, c - 0.115, 0.16], scale: [1, 0.75, 0.9] }, FUR_M);
-  if (av.animal === 'puppy') head.add(sphere(0.1, 16, 12), light, { pos: [-0.13, c + 0.1, 0.22], scale: [1, 1, 0.5] }, FUR_M); // eye patch
   if (has('beret')) {
     const tall = av.animal === 'bunny' || av.animal === 'cat' || av.animal === 'fox';
     head.add(sphere(tall ? 0.2 : 0.25, 28, 12), '#C8434F', { pos: [0.05, c + (tall ? 0.24 : 0.27), tall ? 0.09 : -0.01], rot: [tall ? 0.35 : 0, 0, -0.22], scale: [1, 0.32, 1] }, FAB);
@@ -290,7 +284,7 @@ function buildParts(av) {
   const eyes = new Builder();
   const iris = av.animal === 'cat' ? '#7A6A2A' : av.animal === 'fox' ? '#7A4A1E' : '#4A2E1C';
   for (const s of [-1, 1]) {
-    eyes.add(sphere(0.05, 20, 16), EYE_DARK, { pos: [s * 0.13, 0, 0], scale: [1, 1.2, 0.58] }, { outline: false, mat: 'glossy' });
+    eyes.add(sphere(0.047, 20, 16), EYE_DARK, { pos: [s * 0.13, 0, 0], scale: [1, 1.2, 0.58] }, { outline: false, mat: 'glossy' });
     eyes.add(sphere(0.036, 18, 12), iris, { pos: [s * 0.13, -0.008, 0.012], scale: [1, 1.15, 0.5] }, { outline: false, mat: 'glossy' });
     eyes.add(sphere(0.02, 14, 10), '#0A0604', { pos: [s * 0.13, -0.004, 0.022], scale: [av.animal === 'cat' ? 0.55 : 1, 1.2, 0.5] }, { outline: false, mat: 'glossy' });
     eyes.add(sphere(0.0145, 10, 8), '#FFFFFF', { pos: [s * 0.13 + 0.016, 0.026, 0.03] }, { outline: false, mat: 'shine' });

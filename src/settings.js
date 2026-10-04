@@ -4,8 +4,8 @@ const KEY = 'hh.gfx';
 export const PRESETS = {
   low: { res: 0.75, aa: false, shadows: 0, lights: 0, grass: 0, bloom: false, rays: false, ao: false, reflections: false, fur: false },
   medium: { res: 1, aa: true, shadows: 1, lights: 3, grass: 1, bloom: true, rays: false, ao: false, reflections: false, fur: false },
-  high: { res: 1, aa: true, shadows: 2, lights: 6, grass: 2, bloom: true, rays: true, ao: false, reflections: false, fur: true },
-  ultra: { res: 1, aa: true, shadows: 3, lights: 8, grass: 3, bloom: true, rays: true, ao: true, reflections: true, fur: true },
+  high: { res: 1, aa: true, shadows: 2, lights: 6, grass: 2, bloom: true, rays: true, ao: false, reflections: false, fur: false },
+  ultra: { res: 1, aa: true, shadows: 3, lights: 8, grass: 3, bloom: true, rays: true, ao: true, reflections: true, fur: false },
 };
 
 function defaultPreset() {
@@ -25,7 +25,12 @@ export function loadSettings() {
   Object.assign(settings, { preset: p }, PRESETS[p]);
   try {
     const saved = JSON.parse(localStorage.getItem(KEY));
-    if (saved && typeof saved === 'object') for (const k of Object.keys(settings)) if (k in saved) settings[k] = saved[k];
+    if (saved && typeof saved === 'object') {
+      // version 2: fluffy fur is now off unless you turn it on again
+      if (saved.v !== 2) delete saved.fur;
+      for (const k of Object.keys(settings)) if (k in saved) settings[k] = saved[k];
+    }
+    settings.v = 2;
   } catch {}
   return settings;
 }
@@ -71,7 +76,7 @@ const ROWS = [
   ['rays', 'Sun rays', [[true, 'On'], [false, 'Off']]],
   ['ao', 'Ambient occlusion', [[true, 'On'], [false, 'Off']]],
   ['reflections', 'Sea reflections', [[true, 'On'], [false, 'Off']]],
-  ['fur', 'Fluffy fur', [[true, 'On'], [false, 'Off']]],
+  ['fur', 'Fuzzy fur (experimental)', [[true, 'On'], [false, 'Off']]],
   ['aa', 'Anti-aliasing', [[true, 'On'], [false, 'Off']]],
   ['fov', 'Field of view', [['normal', 'Normal'], ['wide', 'Wide']]],
   ['fps', 'Show FPS', [[true, 'On'], [false, 'Off']]],

@@ -11,7 +11,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 export const SEA_Y = -8;
 
 export const W = {
-  edge: 61, // the woods are walkable out to here (east, north and south)
+  edge: 73.5, // the woods are walkable out to here (east, north and south)
   cliffEdgeX: -18.35, // the clifftop: no further west except on the cliff steps
   summit: { x: 45, z: -41 },
   pool: { x: 40.6, z: 26.6, r: 3.4, y: 2.2 },
@@ -86,15 +86,19 @@ export const BRIDGE = { x: 17.45, z: 45.6, len: 6.4, hw: 0.8, yaw: 0, y: 0 };
 
 // ---------- the cliff steps ----------
 // Three flights cut into the cliff face and a wooden stair onto the beach.
+// Wide flights so two friends can pass, with roomy landings at the turns.
 export const CLIFF_LEGS = [
-  { a: [-19.05, 0.9, 0.0], b: [-19.72, -10.5, -2.9], hw: 0.72, kind: 'rock' },
-  { a: [-21.2, -10.9, -3.05], b: [-21.62, 1.6, -5.85], hw: 0.72, kind: 'rock' },
-  { a: [-21.78, 2.7, -5.95], b: [-21.35, 7.9, -6.84], hw: 0.62, kind: 'wood' },
+  { a: [-19.05, 0.9, 0.0], b: [-19.72, -10.5, -2.9], hw: 0.95, kind: 'rock' },
+  { a: [-21.7, -10.9, -3.05], b: [-22.0, 1.6, -5.85], hw: 0.95, kind: 'rock' },
+  { a: [-22.05, 2.75, -5.95], b: [-21.75, 8.2, -6.93], hw: 0.85, kind: 'wood' },
 ];
 export const CLIFF_LANDINGS = [
-  { x: -20.45, z: -11.45, y: -2.97, r: 1.3 },
-  { x: -21.75, z: 2.2, y: -5.9, r: 0.95 },
+  { x: -20.7, z: -11.55, y: -2.97, r: 1.65 },
+  { x: -22.05, z: 2.15, y: -5.9, r: 1.25 },
 ];
+// a boardwalk across the sand from the foot of the stairs to the dock
+export const BOARDWALK = { x0: -22.75, x1: -21.15, z0: 8.0, z1: 12.2 };
+export const onBoardwalk = (x, z) => x > BOARDWALK.x0 && x < BOARDWALK.x1 && z > BOARDWALK.z0 && z < BOARDWALK.z1;
 const legSegs = CLIFF_LEGS.map((l) => ({ ax: l.a[0], az: l.a[1], bx: l.b[0], bz: l.b[1], y0: l.a[2], y1: l.b[2], hw: l.hw, kind: l.kind }));
 
 // ---------- the cove ----------
@@ -118,7 +122,7 @@ export function hills(x, z) {
   let h = rise * (3.0 + 1.5 * Math.sin(x * 0.085 + 1.1) * Math.cos(z * 0.07 - 0.4) + 1.1 * Math.sin(x * 0.047 - z * 0.11 + 2.0) + 0.45 * Math.sin(x * 0.19 + z * 0.15));
   h += rise * (8.5 * gauss(x - W.summit.x, z - W.summit.z, 11) + 3.6 * gauss(x - 56, z - 29, 9) + 2.0 * gauss(x - 8, z + 45, 10) - 1.3 * gauss(x - W.meadow.x, z - W.meadow.z, 8));
   // wooded mountains close the map in (steep enough to stop you, not a wall in the sky)
-  const edge = Math.max(x - 60, Math.abs(z) - 60, 0);
+  const edge = Math.max(x - 72, Math.abs(z) - 72, 0);
   if (edge > 0) h += 24 * smooth(0, 38, edge) * (0.75 + 0.25 * Math.sin(x * 0.05 + z * 0.07)) + 6 * smooth(0, 6, edge);
   return h;
 }
@@ -197,15 +201,18 @@ export function creekAt(x, z) {
   }
   return best;
 }
-function legAt(x, z) {
+function legAt(x, z, y) {
   let best = null;
+  // where flights run side by side, pick the one at the walker's height
+  const score = (d, ly) => d + (y === undefined ? 0 : Math.abs(ly - y) * 2);
   for (const s of legSegs) {
     const p = project(s, x, z);
-    if (p.d < s.hw + 0.05 && (!best || p.d < best.d)) best = { d: p.d, y: lerp(s.y0, s.y1, p.t), seg: s, t: p.t };
+    const ly = lerp(s.y0, s.y1, p.t);
+    if (p.d < s.hw + 0.05 && (!best || score(p.d, ly) < score(best.d, best.y))) best = { d: p.d, y: ly, seg: s, t: p.t };
   }
   for (const l of CLIFF_LANDINGS) {
     const d = Math.hypot(x - l.x, z - l.z);
-    if (d < l.r && (!best || d < best.d)) best = { d, y: l.y, landing: l };
+    if (d < l.r && (!best || score(d, l.y) < score(best.d, best.y))) best = { d, y: l.y, landing: l };
   }
   return best;
 }
@@ -217,6 +224,14 @@ export function stepsSolid(x, y, z) {
     const ly = lerp(s.y0, s.y1, p.t);
     if (p.d < s.hw + 0.9 && y < ly - 0.05 && y > ly - 2.2 && s.kind === 'rock') return true;
   }
+  return false;
+}
+
+// on (or right beside) the cliff steps or their landings
+export function onSteps(x, z, m = 0.4) {
+  if (x > -17.5 || z < -13.5 || z > 8.5) return false;
+  for (const s of legSegs) if (project(s, x, z).d < s.hw + m) return true;
+  for (const l of CLIFF_LANDINGS) if (Math.hypot(x - l.x, z - l.z) < l.r + m) return true;
   return false;
 }
 
@@ -270,9 +285,10 @@ export function shapeTerrain(x, z, h) {
 // `y` (the walker's current height) picks the right flight where the steps pass above each other.
 export function specialGround(x, z, y) {
   if (x < -18.3) {
-    const leg = legAt(x, z);
+    const leg = legAt(x, z, y);
     if (leg && (y === undefined || Math.abs(leg.y - y) < 1.2)) return leg.y;
     if (onDock(x, z)) return dockHeight(x);
+    if (onBoardwalk(x, z)) return beachHeight(x, z) + 0.12;
     if (inCove(x, z)) return beachHeight(x, z);
     return null;
   }
@@ -286,11 +302,10 @@ export function specialGround(x, z, y) {
 // Can you be here at all? (water is checked separately)
 export function walkable(x, z, y) {
   if (x < W.cliffEdgeX) {
-    const leg = legAt(x, z);
+    const leg = legAt(x, z, y);
     if (leg && (y === undefined || Math.abs(leg.y - y) < 1.2)) return true;
     if (onDock(x, z)) return true;
-    if (inCove(x, z) && x < -20.0 && beachHeight(x, z) > SEA_Y + 0.3) return true;
-    if (inCove(x, z) && x >= -20.0 && x < -19.75) return true; // right under the cliff
+    if (inCove(x, z) && x < -20.4 && beachHeight(x, z) > SEA_Y + 0.3) return true;
     return false;
   }
   return x < W.edge && Math.abs(z) < W.edge;
@@ -358,6 +373,14 @@ export function findSpots(rng, colliders, terrainHeight) {
   }
   for (let i = 0; i < 6; i++) { const a = rng() * Math.PI * 2, r = 2.5 + rng() * 3; tryAdd(W.fairy.x + Math.cos(a) * r, W.fairy.z + Math.sin(a) * r, 'glen'); }
   for (let i = 0; i < 4; i++) { const a = rng() * Math.PI * 2, r = 3 + rng() * 3; tryAdd(W.summit.x + Math.cos(a) * r, W.summit.z + Math.sin(a) * r, 'summit'); }
+  // deep in the woods, off the trails
+  for (let i = 0; i < 40; i++) {
+    const x = 22 + rng() * 48, z = (rng() * 2 - 1) * 68;
+    if (Math.abs(z) < 22 && x < 24) continue;
+    const t = trailAt(x, z);
+    if (t && t.d < 2) continue;
+    tryAdd(x, z, Math.hypot(x - W.meadow.x, z - W.meadow.z) < W.meadow.r ? 'meadow' : 'woods');
+  }
   // the beach
   for (let i = 0; i < 26; i++) {
     const z = W.cove.z0 + 1 + rng() * (W.cove.z1 - W.cove.z0 - 2);

@@ -281,3 +281,41 @@ A two-storey corner café: stone plinth, cream plaster, a serving hatch with a p
 
 ### Tests
 Add checks for: hiking out on a trail, the map edge, the cliff steps going down, the beach and dock, taking a boat out and coming back, picking up a find and seeing it in the journal, the café's seats, one-emote-at-a-time, and in multiplayer a friend seeing your boat sail and the helm being refused to someone else.
+
+## Version 3: polish pass (the walk to the boats, the cliff, the forest, houses, grass, characters)
+
+### The walk down to the pier
+- A stone gateway marks the top: two pillars with caps and lanterns, a beam and a "Cove & Pier ↓" sign. The fence opens there, and no trees, rocks or posts stand in the way.
+- The three flights are wider (about 1.9 m for the stone flights, 1.7 m for the timber stair), and the treads, rock bed and rope posts are all sized from each flight's width. Landings are bigger.
+- A plank boardwalk runs from the foot of the stairs across the sand towards the dock. The boathouse, rowboat, umbrella, deck chairs and driftwood sit to the sides, and beach rocks are only at the far ends of the cove. No sea stack stands on the beach.
+- The camera never ends up inside the step rock (`stepsSolid`).
+
+### The cliff
+- The face is one function, `cliffFaceX(z, y, top)`, used both to build the mesh and for camera collisions. The turf rolls over the lip, there's a slight undercut beneath it, and below that come buttresses and gullies, strata ledges, crags, and a talus apron at the foot. The steps and the cove are carved out of it.
+- Colour comes in tilted bands (turf, soil, sandstone layers), with darker gullies, rain streaks, a wet band and algae near the waterline, and moss on anything flat enough. Ferns and bushes grow on the ledges, and scree and boulders lie at the foot (none in the cove).
+- The sea stacks have strata ledges, grooves, a flared foot and rounded shoulders.
+
+### The forest
+- The woods reach about 72 m out, with mountains beyond. Trees are spaced more tightly, there are glades, and ages vary: saplings, ordinary trees and big old ones. The undergrowth is doubled.
+- Fallen trees lie in the deep woods: mossy trunks with branch stubs, a splintered tip and the root plate torn up with the tree. Each has colliders, with ferns and mushrooms along it.
+- There are forty extra find spots in the deep woods.
+- Ferns, leaf litter and pebbles in chunks more than about 70 m from the camera are hidden (`Foliage.cull`).
+
+### Houses
+Cottages come from one builder with five styles. Each style sets wall, roof, trim, door and shutter colours, half-timbering or a stone footing with quoins, an optional porch or door hood, an optional dormer, and one or two floors. Every house has:
+- framed windows with glazing bars, sills, louvred shutters, flower boxes and panes that glow at night;
+- a panelled door with a fanlight, a step and a mat;
+- a lantern;
+- gables with small windows;
+- tiled roof rows, fascia, gutters, a downpipe and barge boards;
+- a ridge cap;
+- a chimney with a cap and pots.
+
+### Grass
+- Grass only grows on open ground. There is none on the beach, cliff, steps, sand, plaza, café terrace (now flagstones), the trodden earth round the campfire, steep slopes, or under anything solid.
+- Tufts with no height collapse to nothing instead of lying flat.
+
+### Characters
+- The body under the jumper is the fur colour.
+- Faces are cleaner: no whiskers and no eye patch, rounder cheeks and slightly bigger eyes.
+- The fur is plush, and the fuzzy fur shells are an experimental option that is off by default (older saved settings are migrated).

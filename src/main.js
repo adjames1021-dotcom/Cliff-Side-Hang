@@ -38,7 +38,7 @@ const sky = new DayNight(scene, renderer, world, fx);
 const scenery = buildScenery(scene, world, fx);
 const waters = new Waters(scene, renderer);
 for (const m of world.waterMeshes) m.material = waters.pond;
-const grass = new Grass(scene, { density: world.grassDensity, height: (x, z) => groundHeight(x, z), rect: [-20, -62, 82, 124], size: 512 });
+const grass = new Grass(scene, { density: world.grassDensity, height: (x, z) => groundHeight(x, z), rect: [-20, -74, 94, 148], size: 576 });
 const post = new Post(renderer, scene, camera);
 const net = new Net();
 const shared = new Shared();
@@ -1036,6 +1036,7 @@ function frame(now) {
     for (const a of activities) a.update?.(dt, t);
   }
   FUR_VIEW.pos.copy(camera.position);
+  world.foliage.cull(camera.position.x, camera.position.z);
   for (const p of game.players.values()) placeCharacter(p, dt);
   if (game.mode === 'creator') placeCharacter(game.preview, dt);
 

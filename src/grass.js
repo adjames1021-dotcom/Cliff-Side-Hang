@@ -104,7 +104,8 @@ export class Grass {
           vH = aH; vTint = m.b * 0.7 + gh(cell + 1.3) * 0.3;
           vGW = (modelMatrix * vec4(wp.x, m.r, wp.y, 1.0)).xyz;`)
         .replace('#include <begin_vertex>', /* glsl */`
-          vec3 bp = position * vec3(0.8 + hScale, hScale, 0.8 + hScale);
+          // tufts with nothing to grow on vanish completely (no flat stars left lying on sand or rock)
+          vec3 bp = position * vec3(0.8 + hScale, hScale, 0.8 + hScale) * step(0.004, hScale);
           vec3 transformed = vec3(bp.x * ca + bp.z * sa, bp.y, -bp.x * sa + bp.z * ca);
           // wind gusts roll across the field
           float gust = sin(uTime * 1.6 + wp.x * 0.35 + wp.y * 0.21) * 0.5 + sin(uTime * 2.7 + wp.x * 0.9) * 0.2;

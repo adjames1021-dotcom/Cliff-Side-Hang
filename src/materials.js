@@ -156,7 +156,7 @@ export const REAL = {
   foliage: std({ roughness: 0.82 }, { ch: 'r', scale: 3.2, bump: 0.006, albedo: 0.16, rough: 0.1 }),
   ground: std({ roughness: 0.96 }, { ch: 'r', scale: 1.7, bump: 0.008, albedo: 0.2, rough: 0.04 }),
   fabric: phys({ roughness: 0.95, sheen: 0.7, sheenRoughness: 0.75, sheenColor: new THREE.Color('#ffffff') }, { ch: 'a', scale: 11, bump: 0.0008, albedo: 0.05, rough: 0.05, space: 'object' }),
-  fur: phys({ roughness: 0.92, sheen: 1, sheenRoughness: 0.5, sheenColor: new THREE.Color('#fff6ea') }, { ch: 'r', scale: 18, bump: 0.0006, albedo: 0.07, rough: 0.05, space: 'object' }),
+  fur: phys({ roughness: 0.88, sheen: 0.55, sheenRoughness: 0.6, sheenColor: new THREE.Color('#fff6ea') }, { ch: 'r', scale: 18, bump: 0.0003, albedo: 0.04, rough: 0.05, space: 'object' }),
   metal: std({ roughness: 0.36, metalness: 0.72 }, { ch: 'r', scale: 3, bump: 0.0005, albedo: 0.05, rough: 0.2 }),
   glossy: phys({ roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.06 }),
   ceramic: phys({ roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.1 }),

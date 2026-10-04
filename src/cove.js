@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { Builder, rbox, sphere, capsule, torus, lathe, roundCyl, rng } from './toon.js';
 import { REAL, registerMesh } from './materials.js';
-import { W, SEA_Y, CLIFF_LEGS, CLIFF_LANDINGS, beachHeight, shoreX, dockHeight } from './wilds.js';
+import { W, SEA_Y, CLIFF_LEGS, CLIFF_LANDINGS, BOARDWALK, beachHeight, shoreX, dockHeight } from './wilds.js';
 import { signBoard } from './woods.js';
 import { noiseRock } from './foliage.js';
 import { makeRowboat } from './boats.js';
@@ -57,9 +57,9 @@ export function buildCove(ctx) {
       b.add(capsule(0.02, 0.35 + R() * 0.3, 2, 4), '#3E5A2E', { pos: [x, beachHeight(x, z) + 0.01, z], rot: [Math.PI / 2, R() * 6, 0] }, { mat: 'foliage', outline: false });
     }
     // rocks at the foot of the cliff and a tide-pool reef round the sea stack
-    for (let i = 0; i < 18; i++) {
-      const z = W.cove.z0 + R() * (W.cove.z1 - W.cove.z0), x = -20.1 - R() * 0.8, s = 0.4 + R() * 0.8;
-      if (Math.abs(z - W.dock.z) < 2.5) continue;
+    // (only at the far ends of the beach, so the way from the stairs to the dock stays clear)
+    for (let i = 0; i < 14; i++) {
+      const z = i % 2 ? W.cove.z0 + 0.3 + R() * 1.6 : W.cove.z1 - 0.3 - R() * 1.0, x = -20.6 - R() * 0.7, s = 0.4 + R() * 0.7;
       fol.rock(x, beachHeight(x, z) - s * 0.3, z, s, STONE[i % 3], 0.8, 0.3);
       circle(x, z, s * 0.7);
     }
@@ -91,24 +91,25 @@ export function buildCove(ctx) {
           const a3 = new THREE.Vector3(ax, ay - 0.42, az), b3 = new THREE.Vector3(bx, by - 0.42, bz);
           const dir = b3.clone().sub(a3), mid = a3.clone().add(b3).multiplyScalar(0.5);
           const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
-          b.add(rbox(1.5, 0.62, dir.length() + 0.6, 0.12), STONE[2], new THREE.Matrix4().compose(mid.clone().add(new THREE.Vector3(nx * outward * 0.05, 0, nz * outward * 0.05)), q, new THREE.Vector3(1, 1, 1)), { mat: 'rock' });
+          b.add(rbox(leg.hw * 2 + 0.1, 0.62, dir.length() + 0.6, 0.12), STONE[2], new THREE.Matrix4().compose(mid.clone().add(new THREE.Vector3(nx * outward * 0.05, 0, nz * outward * 0.05)), q, new THREE.Vector3(1, 1, 1)), { mat: 'rock' });
         }
         for (let i = 0; i < nSteps; i++) {
           const k = (i + 0.5) / nSteps, x = ax + (bx - ax) * k, z = az + (bz - az) * k, y = ay + (by - ay) * k;
-          b.add(rbox(1.4, 0.2, (len / nSteps) * 1.35, 0.035), STONE[(i * 7) % 3], { pos: [x, y - 0.1, z], rot: [0, yaw + (R() - 0.5) * 0.03, 0] }, { mat: 'stone' });
+          b.add(rbox(leg.hw * 2, 0.2, (len / nSteps) * 1.35, 0.035), STONE[(i * 7) % 3], { pos: [x, y - 0.1, z], rot: [0, yaw + (R() - 0.5) * 0.03, 0] }, { mat: 'stone' });
         }
       } else {
         // timber stair on posts down onto the sand
         for (let i = 0; i < nSteps; i++) {
           const k = (i + 0.5) / nSteps, x = ax + (bx - ax) * k, z = az + (bz - az) * k, y = ay + (by - ay) * k;
-          b.add(rbox(1.15, 0.06, (len / nSteps) * 0.9, 0.015), i % 2 ? '#8E6640' : '#7F5A38', { pos: [x, y - 0.03, z], rot: [0, yaw, 0] }, { mat: 'wood' });
+          b.add(rbox(leg.hw * 2 - 0.05, 0.06, (len / nSteps) * 0.9, 0.015), i % 2 ? '#8E6640' : '#7F5A38', { pos: [x, y - 0.03, z], rot: [0, yaw, 0] }, { mat: 'wood' });
         }
         for (const s of [-1, 1]) {
-          const p0 = new THREE.Vector3(ax + nx * s * 0.58, ay - 0.12, az + nz * s * 0.58), p1 = new THREE.Vector3(bx + nx * s * 0.58, by - 0.12, bz + nz * s * 0.58);
+          const sw = leg.hw - 0.04;
+          const p0 = new THREE.Vector3(ax + nx * s * sw, ay - 0.12, az + nz * s * sw), p1 = new THREE.Vector3(bx + nx * s * sw, by - 0.12, bz + nz * s * sw);
           const mid = p0.clone().add(p1).multiplyScalar(0.5), dir = p1.clone().sub(p0);
           b.add(new THREE.BoxGeometry(0.08, 0.22, dir.length()), '#6A4A2E', new THREE.Matrix4().compose(mid, new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize()), new THREE.Vector3(1, 1, 1)), { mat: 'wood' });
           for (let i = 0; i <= 3; i++) {
-            const k = i / 3, x = ax + (bx - ax) * k + nx * s * 0.58, z = az + (bz - az) * k + nz * s * 0.58, y = ay + (by - ay) * k;
+            const k = i / 3, x = ax + (bx - ax) * k + nx * s * sw, z = az + (bz - az) * k + nz * s * sw, y = ay + (by - ay) * k;
             const ground = beachHeight(x, z);
             b.add(rbox(0.1, y - ground + 0.1, 0.1, 0.02), '#5B4130', { pos: [x, (y + ground) / 2 - 0.1, z] }, { mat: 'wood' });
           }
@@ -140,13 +141,33 @@ export function buildCove(ctx) {
       lampGlows.push({ p: new THREE.Vector3(lx, l.y + 1.42, lz), size: 1.3, color: '#FFE08A' });
       lamps.push({ x: lx, y: l.y + 1.4, z: lz });
     }
-    // sign and a gap in the fence at the top
-    const sg = signBoard(['Cove  ·  steep steps'], 1.4, 0.28, { arrow: -1 });
-    sg.position.set(-17.9, 1.35, 2.15);
-    sg.rotation.y = Math.PI / 2;
-    scene.add(sg);
-    b.add(roundCyl(0.06, 1.5, 0.02, 8), POST, { pos: [-17.9, -0.05, 2.15] }, { mat: 'wood' });
-    circle(-17.9, 2.15, 0.12);
+    // a stone gateway at the top of the steps, with lanterns and a sign over the opening
+    for (const gz of [-0.55, 2.35]) {
+      b.add(rbox(0.5, 1.7, 0.5, 0.05), '#A39684', { pos: [-18.25, 0.8, gz] }, { mat: 'stone' });
+      b.add(rbox(0.62, 0.12, 0.62, 0.03), '#8C8378', { pos: [-18.25, 1.7, gz] }, { mat: 'stone' });
+      b.add(lathe([[0, 0], [0.1, 0], [0.12, 0.18], [0.05, 0.26], [0, 0.28]], 6), '#2B2826', { pos: [-18.25, 1.76, gz] }, { mat: 'metal' });
+      G.add(sphere(0.055, 8, 6), '#FFE08A', { pos: [-18.25, 1.86, gz] });
+      lampGlows.push({ p: new THREE.Vector3(-18.25, 1.86, gz), size: 1.1, color: '#FFE08A' });
+      circle(-18.25, gz, 0.32);
+    }
+    b.add(rbox(0.16, 0.16, 3.4, 0.03), '#6A4A2E', { pos: [-18.25, 2.2, 0.9] }, { mat: 'wood' });
+    for (const gz of [0.3, 1.5]) b.add(capsule(0.012, 0.18, 2, 4), '#3A3A3A', { pos: [-18.25, 2.03, gz] }, { mat: 'metal', outline: false });
+    {
+      const sg = signBoard(['Cove & Pier  ↓'], 1.5, 0.3);
+      sg.position.set(-18.17, 1.82, 0.9);
+      sg.rotation.y = Math.PI / 2;
+      scene.add(sg);
+    }
+    lamps.push({ x: -18.25, y: 1.8, z: 0.9 });
+    // the boardwalk over the sand to the dock
+    {
+      const bw = BOARDWALK, cx = (bw.x0 + bw.x1) / 2, w = bw.x1 - bw.x0;
+      for (let z = bw.z0 + 0.12; z < bw.z1; z += 0.24) b.add(rbox(w, 0.05, 0.21, 0.01), z % 0.48 < 0.24 ? '#9A7048' : '#8E6640', { pos: [cx, beachHeight(cx, z) + 0.1, z] }, { mat: 'wood' });
+      for (const x of [bw.x0 + 0.1, bw.x1 - 0.1]) {
+        b.add(rbox(0.08, 0.1, bw.z1 - bw.z0, 0.01), '#5B4130', { pos: [x, beachHeight(x, (bw.z0 + bw.z1) / 2) + 0.03, (bw.z0 + bw.z1) / 2] }, { mat: 'wood' });
+        for (let z = bw.z0 + 0.2; z < bw.z1; z += 1.4) b.add(roundCyl(0.05, 0.28, 0.01, 8), '#5B4130', { pos: [x, beachHeight(x, z) - 0.12, z] }, { mat: 'wood' });
+      }
+    }
   }
 
   // ---------- the dock ----------
@@ -213,7 +234,7 @@ export function buildCove(ctx) {
 
   // ---------- boathouse + beach life ----------
   {
-    const x = -21.4, z = 18.4, y = beachHeight(x, z);
+    const x = -22.0, z = 18.4, y = beachHeight(x, z);
     b.group({ pos: [x, y, z], rot: [0, -Math.PI / 2, 0] }, (g) => {
       g.add(rbox(3.4, 0.25, 2.6, 0.04), '#7A6E62', { pos: [0, -0.05, 0] }, { mat: 'stone' });
       for (let i = 0; i < 12; i++) g.add(rbox(3.2, 0.2, 0.06, 0.01), i % 2 ? '#3E6C8C' : '#356180', { pos: [0, 0.2 + i * 0.19, 1.22] }, { mat: 'paint' });
@@ -227,23 +248,23 @@ export function buildCove(ctx) {
       g.add(torus(0.22, 0.062, 8, 4, Math.PI / 4), '#D9544D', { pos: [-1.0, 1.6, 1.3] }, { mat: 'glossy', outline: false });
     });
     for (let lz = -1.3; lz <= 1.31; lz += 0.65) for (const lx of [-1.3, 1.3]) circle(x + lz, z - lx, 0.5);
-    // upturned rowboat, oars
-    const rx = -22.3, rz = 15.6, ry = beachHeight(rx, rz);
+    // upturned rowboat, oars (up at the quiet north end of the beach)
+    const rx = -24.9, rz = 6.9, ry = beachHeight(rx, rz);
     const row = makeRowboat();
     row.position.set(rx, ry + 0.36, rz);
-    row.rotation.set(0, 0.4, Math.PI); // upside down, resting on its gunwales
+    row.rotation.set(0, 1.2, Math.PI); // upside down, resting on its gunwales
     scene.add(row);
-    b.add(capsule(0.03, 1.8, 2, 6), '#A8723C', { pos: [rx + 0.9, ry + 0.05, rz - 0.4], rot: [Math.PI / 2, 0.3, 0] }, { mat: 'wood' });
-    circle(rx, rz, 0.9); circle(rx - 0.4, rz + 0.9, 0.6); circle(rx + 0.4, rz - 0.9, 0.6);
-    // umbrella + deck chairs
-    const ux = -22.6, uz = 8.4, uy = beachHeight(ux, uz);
+    b.add(capsule(0.03, 1.8, 2, 6), '#A8723C', { pos: [rx + 0.3, ry + 0.05, rz + 1.0], rot: [Math.PI / 2, 1.5, 0] }, { mat: 'wood' });
+    circle(rx, rz, 0.9); circle(rx - 0.85, rz + 0.35, 0.6); circle(rx + 0.85, rz - 0.35, 0.6);
+    // umbrella + deck chairs, south of the dock looking out to sea
+    const ux = -23.9, uz = 16.1, uy = beachHeight(ux, uz);
     b.add(roundCyl(0.03, 2.3, 0.01, 8), '#E9E3D6', { pos: [ux, uy - 0.1, uz], rot: [0.08, 0, 0.05] }, { mat: 'metal' });
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
       b.add(new THREE.ConeGeometry(1.3, 0.45, 3, 1, true, a, Math.PI / 4), i % 2 ? '#F4ECDD' : '#3E7CB1', { pos: [ux + 0.17, uy + 2.15, uz + 0.1] }, { mat: 'cloth', outline: false });
     }
     circle(ux, uz, 0.12);
-    [[-21.7, 7.4, 1.3], [-23.4, 7.6, 1.9]].forEach(([cx, cz, yaw], i) => {
+    [[-24.5, 15.2, -1.5], [-23.3, 15.5, -1.75]].forEach(([cx, cz, yaw], i) => {
       const cy = beachHeight(cx, cz);
       b.group({ pos: [cx, cy, cz], rot: [0, yaw, 0] }, (g) => {
         for (const sx of [-0.28, 0.28]) {
@@ -256,7 +277,7 @@ export function buildCove(ctx) {
       circle(cx, cz, 0.35);
     });
     // driftwood
-    for (const [dx, dz, yaw, l] of [[-21.0, 11.0, 0.4, 2.2], [-23.9, 17.8, 1.2, 1.6], [-21.6, 5.4, -0.7, 1.3]]) {
+    for (const [dx, dz, yaw, l] of [[-25.2, 18.8, 1.2, 1.6], [-21.3, 5.0, -0.7, 1.3]]) {
       const dy = beachHeight(dx, dz);
       b.add(capsule(0.12, l, 2, 8), '#B5A48C', { pos: [dx, dy + 0.1, dz], rot: [0, yaw, Math.PI / 2] }, { mat: 'wood' });
       b.add(capsule(0.05, l * 0.4, 2, 6), '#B5A48C', { pos: [dx + 0.2, dy + 0.12, dz + 0.3], rot: [0, yaw + 0.7, Math.PI / 2] }, { mat: 'wood' });

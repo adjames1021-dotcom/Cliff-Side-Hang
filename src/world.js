@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { C, MAT, Builder, rbox, sphere, capsule, torus, lathe, roundCyl, matrixOf, toonMaterial, rng, hash, outlineMaterial, addSmoothNormals } from './toon.js';
 import { REAL, registerMesh } from './materials.js';
 import { Foliage, noiseRock } from './foliage.js';
-import { W as WILD, initWilds, hills, shapeTerrain, specialGround, walkable as wildWalkable, wildWater, trailAmt, creekAt, wildGrass, sailable, beachHeight, inCove, onDock, stepsSolid } from './wilds.js';
+import { W as WILD, initWilds, hills, shapeTerrain, specialGround, walkable as wildWalkable, wildWater, trailAmt, creekAt, wildGrass, sailable, beachHeight, inCove, onDock, stepsSolid, onSteps } from './wilds.js';
 import { planWoods, buildWoods, signBoard } from './woods.js';
 import { buildCove } from './cove.js';
 import { makeSailboat } from './boats.js';
@@ -33,7 +33,7 @@ export const L = {
   lookout: { x: -14.5, z: -14, h: 1.3, r: 5.5 },
   telescope: { x: -16.4, z: -14.3, standX: -15.6 },
   spawn: { x: 0, z: 5.6 },
-  seaStacks: [[-26, -30, 2.2], [-29, 22, 2.8], [-23.8, 4, 1.2], [-32, -8, 1.6]],
+  seaStacks: [[-26, -30, 2.2], [-29, 22, 2.8], [-27.5, -19, 1.2], [-32, -8, 1.6]],
   lighthouse: { x: -29, z: 22, y: -0.9 },
   windmill: { x: -3, z: -29.5 },
 };
@@ -81,25 +81,56 @@ export const isWater = (x, z, m = 0.3) =>
   (Math.hypot(x - L.pond.x, z - L.pond.z) < 4.75 && !inDock(x, z, m * 0.5)) || (x > 19 || Math.abs(z) > 19 ? wildWater(x, z) : false);
 export const walkable = (x, z, y) => wildWalkable(x, z, y);
 
-// A weathered sea stack: a tapered, lumpy pillar with ledges, base at the origin.
+// A weathered sea stack: a tapered pillar of the same layered sandstone as the cliff, with ledges,
+// vertical grooves, a wider foot and a rounded top. Base at the origin.
 function stackGeo(R, s, h) {
-  const g = new THREE.CylinderGeometry(s * 0.72, s * 1.15, h, 18, 14, false);
+  const g = new THREE.CylinderGeometry(s * 0.78, s * 1.2, h, 30, Math.max(12, Math.round(h * 4)), false);
   g.translate(0, h / 2, 0);
   const p = g.attributes.position, v = new THREE.Vector3();
   const o = [R() * 10, R() * 10, R() * 10];
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i);
-    const a = Math.atan2(v.z, v.x), t = v.y / h;
-    const r = Math.hypot(v.x, v.z);
+    const a = Math.atan2(v.z, v.x), t = v.y / h, r = Math.hypot(v.x, v.z);
     if (r < 1e-4) continue;
-    const ledge = Math.sin(t * 9 + o[0]) > 0.6 ? 0.08 : 0;
-    const n = Math.sin(a * 3 + o[1] + t * 2) * 0.12 + Math.sin(a * 7 + o[2] - t * 5) * 0.06 + Math.sin(t * 23 + a * 2) * 0.03 + ledge;
-    const k = 1 + n - (t > 0.97 ? 0.15 : 0);
+    const sv = ((v.y / 1.15 + o[0]) % 1 + 1) % 1;
+    const ledge = 0.09 * THREE.MathUtils.smoothstep(sv, 0.66, 0.95);
+    const groove = -0.07 * Math.pow(Math.max(0, Math.sin(a * 5 + o[1])), 3);
+    const crag = Math.sin(a * 3 + o[1] + t * 2) * 0.1 + Math.sin(a * 7 + o[2] - t * 5) * 0.05 + Math.sin(t * 23 + a * 2) * 0.03;
+    const foot = 0.12 * THREE.MathUtils.smoothstep(0.18 - t, 0, 0.18);
+    let k = 1 + crag + ledge + groove + foot;
+    if (t > 0.94) k *= 1 - (t - 0.94) * 2.2; // rounded shoulders
     v.x *= k; v.z *= k;
     p.setXYZ(i, v.x, v.y, v.z);
   }
   g.computeVertexNormals();
   return g;
+}
+
+// Where the cliff face is (x) at height y along the coast. r: row (0 = the turf lip at the top).
+// Positive "out" pushes rock west toward the sea.
+export function cliffFaceX(z, y, top, r = 99) {
+  const lipOut = 0.35 * (0.5 + 0.5 * Math.sin(z * 0.23 + 1.0)) + 0.12 * Math.sin(z * 0.9); // the edge wanders in plan
+  if (r === 0) return -19.6 - Math.max(0, lipOut);
+  const depth = Math.max(0, top - y), k = Math.min(1, depth / Math.max(1, top + 9.4));
+  const cove = smooth(3.0, 5.2, z) * (1 - smooth(20.6, 22.8, z)); // the cove's wall stands straight up
+  const steps = smooth(-13.6, -12.4, z) * (1 - smooth(2.8, 4.0, z)); // keep the rock behind the cliff steps
+  // turf rolls over the edge, then the rock is undercut beneath it
+  if (depth < 0.32) return -19.6 - Math.max(0, lipOut) - 0.1 * Math.sin((depth / 0.32) * Math.PI * 0.5);
+  let out = Math.max(0, lipOut) - 0.32 * smooth(0.3, 0.55, depth) * (1 - smooth(0.9, 1.6, depth));
+  // buttresses and gullies
+  const grow = smooth(0.4, 2.2, depth);
+  out += grow * (0.85 * Math.sin(z * 0.37 + 1.7 * Math.sin(z * 0.11)) + 0.35 * Math.sin(z * 1.13 + 0.6) + 0.5) * (1 - cove * 0.75);
+  // strata standing out as ledges with sharp tops
+  const sv = (((y - 0.03 * z) / 1.3) % 1 + 1) % 1;
+  out += grow * 0.36 * smooth(0.68, 0.96, sv) * (1 - cove * 0.4);
+  // crags
+  out += grow * (0.22 * Math.sin(z * 2.3 + y * 1.7) + 0.14 * Math.sin(z * 4.1 - y * 3.3) + 0.08 * Math.sin(z * 7.3 + y * 5.1));
+  // the foot bulges out into a talus slope
+  out += k * 1.25 * (1 - cove) + smooth(-6.5, -9.0, y) * 0.9 * (1 - cove * 0.8);
+  let x = -19.6 - out;
+  if (steps > 0 && y > -6.2) x = THREE.MathUtils.lerp(x, Math.max(x, -20.45), steps);
+  if (cove > 0) x = THREE.MathUtils.lerp(x, Math.max(x, -20.3), cove); // leave the beach its width
+  return x;
 }
 
 // Max ground height under a footprint, so things never float.
@@ -157,13 +188,13 @@ export function buildWorld(scene, fx) {
   // fine grid over the village, a little coarser over the woods, sparse out to the mountains
   const xs = [], zs = [];
   for (let i = 0; i <= 130; i++) xs.push(-19.6 + (40.6 * i) / 130);
-  for (let i = 1; i <= 76; i++) xs.push(21 + (41 * i) / 76);
-  for (let i = 1; i <= 26; i++) xs.push(62 + 108 * Math.pow(i / 26, 1.7));
-  for (let i = 26; i >= 1; i--) zs.push(-62 - 108 * Math.pow(i / 26, 1.7));
-  for (let i = 0; i < 76; i++) zs.push(-62 + (41 * i) / 76);
+  for (let i = 1; i <= 100; i++) xs.push(21 + (55 * i) / 100);
+  for (let i = 1; i <= 26; i++) xs.push(76 + 114 * Math.pow(i / 26, 1.7));
+  for (let i = 26; i >= 1; i--) zs.push(-76 - 114 * Math.pow(i / 26, 1.7));
+  for (let i = 0; i < 100; i++) zs.push(-76 + (55 * i) / 100);
   for (let i = 0; i <= 130; i++) zs.push(-21 + (42 * i) / 130);
-  for (let i = 1; i <= 76; i++) zs.push(21 + (41 * i) / 76);
-  for (let i = 1; i <= 26; i++) zs.push(62 + 108 * Math.pow(i / 26, 1.7));
+  for (let i = 1; i <= 100; i++) zs.push(21 + (55 * i) / 100);
+  for (let i = 1; i <= 26; i++) zs.push(76 + 114 * Math.pow(i / 26, 1.7));
 
   const paths = [
     [[0, -7.3], [0, -11.2]], [[5.2, -5.2], [9.5, -7.9]], [[-7.2, -1.2], [-9.4, -2.4]],
@@ -179,6 +210,7 @@ export function buildWorld(scene, fx) {
   const pathAmt = (x, z) => {
     let d = 9;
     for (const p of paths) d = Math.min(d, segDist(x, z, p));
+    d = Math.min(d, Math.hypot(x - L.campfire.x, z - L.campfire.z) - 2.0); // trodden earth round the campfire
     return 1 - smooth(0.7, 1.05, d + (hash(x, z) - 0.5) * 0.25);
   };
 
@@ -213,7 +245,7 @@ export function buildWorld(scene, fx) {
         if (cr && cr.d < cr.hw + 2.5) tmp.lerp(cr.d < cr.hw ? cMud : cBank, 1 - smooth(cr.hw, cr.hw + 2.5, cr.d));
         const dpo = Math.hypot(x - WILD.pool.x, z - WILD.pool.z);
         if (dpo < WILD.pool.r + 2) tmp.lerp(cBank, 1 - smooth(WILD.pool.r, WILD.pool.r + 2, dpo));
-        const edge = Math.max(x - 60, Math.abs(z) - 60);
+        const edge = Math.max(x - 72, Math.abs(z) - 72);
         if (edge > 0) tmp.lerp(cRock, smooth(0, 14, edge) * 0.7);
       }
       const ta = trailAmt(x, z);
@@ -246,24 +278,38 @@ export function buildWorld(scene, fx) {
   }
 
   // ---------- cliff face + sea ----------
+  // A craggy sandstone cliff: buttresses and gullies along its length, strata that stand out as ledges,
+  // a rounded turf lip with the rock undercut beneath it, a talus bulge at the foot and a dark wet band at the waterline.
   {
-    const cols = [], rows = 30;
-    for (let z = -95; z <= 95; z += 0.45) cols.push(z);
-    const pos = [], col = [], idx = [];
-    const bands = ['#B89474', '#A9835F', '#C3A07C', '#9E7A5A', '#B08A66', '#C9A983', '#987456'].map((c) => new THREE.Color(c));
+    const rows = 66, cols = [];
+    for (let z = -95; z <= 95; z += 0.4) cols.push(z);
+    const pos = [], col = [], idx = [], meta = [];
+    const bands = ['#B89474', '#A9835F', '#C3A07C', '#9E7A5A', '#B08A66', '#C9A983', '#987456', '#AE8C6B'].map((c) => new THREE.Color(c));
+    const turf = new THREE.Color('#5E8A3E'), soil = new THREE.Color('#6E5440'), wet = new THREE.Color('#4E4339'), algae = new THREE.Color('#465A36'), tmp = new THREE.Color();
     cols.forEach((z, i) => {
       const top = terrainHeight(-19.6, z);
-      const cove = smooth(3.0, 5.2, z) * (1 - smooth(20.6, 22.8, z)); // the cove's wall stands straight up
-      const steps = smooth(-13.4, -12.2, z) * (1 - smooth(2.6, 3.8, z)); // keep the rock behind the cliff steps
       for (let r = 0; r <= rows; r++) {
         const k = r / rows;
-        const y = top + (-9.2 - top) * k;
-        const bump = r === 0 ? 0 : (Math.sin(z * 0.9 + r * 0.6) * 0.3 + Math.sin(z * 0.31 + r * 1.3) * 0.5 + Math.sin(z * 2.3 + y * 1.7) * 0.12 + hash(i, r) * 0.18 + Math.max(0, Math.sin(y * 1.9 + z * 0.15)) * 0.35) * Math.min(1, k * 4);
-        let fx = -19.6 - bump * (1 - cove * 0.8) - k * 1.6 * (1 - cove);
-        if (steps > 0 && y > -6.2) fx = THREE.MathUtils.lerp(fx, Math.max(fx, -20.45), steps);
-        pos.push(fx, y, z);
-        const c = r === 0 ? new THREE.Color('#5E8A3E') : bands[Math.floor((y + 12) * 1.3) % bands.length].clone().lerp(new THREE.Color('#6E5A48'), k * 0.4);
-        col.push(c.r, c.g, c.b);
+        // rows bunch up near the top so the lip can be rounded
+        const y = r < 4 ? top - [0, 0.07, 0.17, 0.3][r] : top - 0.34 - (top + 9.4 - 0.34) * ((r - 4) / (rows - 4));
+        const kk = (top - y) / (top + 9.4);
+        const x = cliffFaceX(z, y, top, r);
+        pos.push(x, y, z);
+        meta.push(r, y, z);
+        // colour: turf on the lip, a band of soil, then sandstone strata (tilted a touch), darker in gullies and when wet
+        if (r === 0) tmp.copy(turf);
+        else if (r < 3) tmp.copy(turf).lerp(soil, r / 2);
+        else {
+          const band = Math.floor((y - 0.03 * z + 30) / 0.62);
+          tmp.copy(bands[((band % bands.length) + bands.length) % bands.length]);
+          if (y > top - 0.9) tmp.lerp(soil, 0.45 * (1 - (top - y) / 0.9));
+          const gully = 0.5 - 0.5 * Math.sin(z * 0.37 + 1.7 * Math.sin(z * 0.11));
+          tmp.multiplyScalar(1 - 0.22 * gully);
+          tmp.multiplyScalar(1 - 0.1 * Math.max(0, Math.sin(z * 1.7 + 0.4 + Math.sin(y * 0.3))) * (1 - kk)); // rain streaks
+          if (y < -7.0) tmp.lerp(wet, THREE.MathUtils.smoothstep(-y, 7.0, 7.8));
+          if (y < -7.5 && y > -8.6) tmp.lerp(algae, 0.35);
+        }
+        col.push(tmp.r, tmp.g, tmp.b);
       }
     });
     for (let i = 0; i < cols.length - 1; i++) for (let r = 0; r < rows; r++) {
@@ -275,18 +321,47 @@ export function buildWorld(scene, fx) {
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
+    // moss and grass where ledges face the sky
+    {
+      const n = g.attributes.normal, c = g.attributes.color, moss = new THREE.Color('#6B7A3C');
+      for (let v = 0; v < n.count; v++) {
+        const up = n.getY(v), r = meta[v * 3];
+        if (r < 3 || up < 0.45) continue;
+        const k = THREE.MathUtils.smoothstep(up, 0.45, 0.85) * 0.75;
+        tmp.setRGB(c.getX(v), c.getY(v), c.getZ(v)).lerp(moss, k);
+        c.setXYZ(v, tmp.r, tmp.g, tmp.b);
+      }
+    }
     const cliff = new THREE.Mesh(g, REAL.rock);
     cliff.receiveShadow = true;
     cliff.castShadow = true;
     registerMesh(cliff, 'rock');
     scene.add(cliff);
-    // tumbled boulders at the foot of the cliff
-    for (let i = 0; i < 70; i++) {
-      const z = -60 + R() * 120, sz = 0.6 + R() * 1.8;
-      if (z > 2 && z < 24) continue; // the cove beach
-      fol.rock(-21.2 - R() * 2.5, L.seaY - sz * 0.5, z, sz, ['#8E7A68', '#9C8774', '#7F6D5E'][i % 3], 0.8);
+    // tufts and little bushes clinging to the ledges (not over the steps or the cove's walkway)
+    {
+      const p = g.attributes.position, n = g.attributes.normal;
+      let placed = 0;
+      for (let tries = 0; tries < 6000 && placed < 90; tries++) {
+        const v = Math.floor(R() * p.count);
+        const r = meta[v * 3], y = meta[v * 3 + 1], z = meta[v * 3 + 2];
+        if (r < 5 || n.getY(v) < 0.75 || y < -6.8 || Math.abs(z) > 70) continue;
+        if (z > -14 && z < 9) continue; // keep the cliff steps clear
+        const x = p.getX(v);
+        if (R() < 0.55) fol.fern(x - 0.05, y, z, 0.45 + R() * 0.3);
+        else fol.bush(x - 0.1, y - 0.05, z, 0.3 + R() * 0.2);
+        placed++;
+      }
     }
-
+    // a skirt of scree and tumbled boulders at the foot of the cliff, half in the sea
+    for (let i = 0; i < 190; i++) {
+      const z = -66 + R() * 132;
+      if (z > 2.5 && z < 23.5) continue; // the cove beach
+      if (z > -14 && z < 3 && R() < 0.5) continue; // fewer under the steps
+      const foot = cliffFaceX(z, L.seaY + 0.2, terrainHeight(-19.6, z), 99);
+      const big = R() < 0.25, sz = big ? 1.1 + R() * 1.3 : 0.3 + R() * 0.7;
+      const x = foot - 0.2 - R() * (big ? 3.2 : 2.2);
+      fol.rock(x, L.seaY - sz * (big ? 0.55 : 0.35), z, sz, ['#8E7A68', '#9C8774', '#7F6D5E', '#A08A76'][i % 4], 0.75, big ? 0.25 : 0);
+    }
   }
 
   // water surfaces get the shared pond material later
@@ -650,6 +725,11 @@ export function buildWorld(scene, fx) {
       }
       circle(tx, tz, 0.34);
     });
+    // flagstones under the terrace
+    for (let px = 14.95; px < 18.7; px += 0.62) for (let pz = -13.15; pz < -6.7; pz += 0.62) {
+      const k = Math.floor(px * 7.1 + pz * 3.3) & 3;
+      b.add(rbox(0.58 - (k & 1) * 0.03, 0.06, 0.58 - (k >> 1) * 0.03, 0.02), ['#B5AA98', '#A89E8D', '#C0B6A3', '#9F9584'][k], { pos: [px + 0.29, 0.0, pz + 0.29], rot: [0, (k - 1.5) * 0.02, 0] }, { mat: 'stone', outline: false });
+    }
     // umbrella over the first table
     b.add(roundCyl(0.025, 2.4, 0.01, 8), '#E9E3D6', { pos: [15.9, 0.74, -11.4] }, MT);
     for (let i = 0; i < 8; i++) {
@@ -905,8 +985,8 @@ export function buildWorld(scene, fx) {
         }
       }
     };
-    run([[-18.85, -60], [-18.85, -12.6], [-17.7, -12.2], [-17.7, 0.1]]);
-    run([[-18.85, 1.9], [-18.85, 60]]);
+    run([[-18.85, -60], [-18.85, -12.9], [-17.3, -12.5], [-17.3, -0.55], [-17.95, -0.55]]);
+    run([[-17.95, 2.35], [-18.85, 2.6], [-18.85, 60]]);
   }
 
   // ---------- trees, bushes, flowers ----------
@@ -921,7 +1001,7 @@ export function buildWorld(scene, fx) {
   {
     const b = null;
     const inner = [[-14, 13, 1.1], [-3, 16, 1], [-15.5, 17, 1.2, 'blossom'], [-3.6, 15.4, 0.9, 'blossom'], [15, 15, 1.1], [16, 2, 1, 'pine'],
-      [-15.5, 1.5, 1.1, 'pine'], [5, -16.5, 1.1], [16.5, -15.5, 1.2, 'blossom'], [-6.5, -16.5, 1.1, 'pine'], [6.5, 16.5, 1], [-9, -8.6, 0.9, 'blossom'], [15.5, -3.5, 0.9]];
+      [-15.0, 4.9, 1.1, 'pine'], [5, -16.5, 1.1], [16.5, -15.5, 1.2, 'blossom'], [-6.5, -16.5, 1.1, 'pine'], [6.5, 16.5, 1], [-9, -8.6, 0.9, 'blossom'], [15.5, -3.5, 0.9]];
     for (const [x, z, s, k] of inner) { tree(b, x, z, s, k); circle(x, z, 0.3 * s); }
     const bushes = [[-17, 9], [-16.5, -6], [3.5, -9.5], [-3.5, -9.5], [7.5, 2.5], [17.5, 9], [-2.5, 18], [4, 13.5], [13, -15.5], [-17.5, 18.5], [18, 18]];
     for (const [x, z] of bushes) { bush(b, x, z, 1 + R() * 0.3); circle(x, z, 0.5); }
@@ -954,40 +1034,147 @@ export function buildWorld(scene, fx) {
   {
     const b = B('houses');
     const homes = HOMES;
-    const walls = ['#EFE3CF', '#E8C9C0', '#EDDDB0', '#C9D6DA', '#E6D8C2'];
+    // a handful of cottage styles: plaster or stone, one or two storeys, timbered, with porches, dormers and shutters
+    const STYLES = [
+      { wall: '#EFE3CF', roof: '#A44F35', trim: '#F4EEE2', door: '#2F5E44', shutter: '#4F7A5A', timber: true, floors: 2 },
+      { wall: '#E8C9C0', roof: '#5C5A62', trim: '#F4EEE2', door: '#8E3B32', shutter: '#3E6C8C', floors: 1, porch: true, dormer: true },
+      { wall: '#EDDDB0', roof: '#A44F35', trim: '#FFF8EC', door: '#3E6C8C', shutter: '#C8434F', floors: 2 },
+      { wall: '#A69C8E', roof: '#4F5560', trim: '#F4EEE2', door: '#E8893A', shutter: '#2F5E8C', stone: true, floors: 1, porch: true },
+      { wall: '#E6D8C2', roof: '#8E3B28', trim: '#F4EEE2', door: '#5B4130', shutter: '#6E8A52', timber: true, floors: 1, dormer: true },
+    ];
+    const HW = 1.8, HD = 1.6; // half width (local x) and half depth (local z); the front faces +z
     homes.forEach(([x, z, yaw], i) => {
-      const { y, drop } = placeY(x, z, 2.3);
-      const wcol = walls[i % walls.length];
+      const st = STYLES[i % STYLES.length];
+      const { y, drop } = placeY(x, z, 2.4);
+      const wallH = st.floors === 2 ? 4.2 : 2.6, base = 0.2, eave = base + wallH, rise = 1.55, ridge = eave + rise;
+      const WM = st.stone ? { mat: 'stone' } : { mat: 'plaster' };
       b.group({ pos: [x, y, z], rot: [0, yaw, 0] }, (g) => {
-        // stone foundation reaching down to the lowest ground so nothing floats
-        g.add(rbox(3.6, 0.5 + drop, 3.2, 0.06), '#8E8374', { pos: [0, (0.2 - drop) / 2 - 0.05, 0] }, { mat: 'stone' });
-        g.add(rbox(3.4, 3.0, 3, 0.08), wcol, { pos: [0, 1.6, 0] }, { mat: 'plaster' });
-        g.add(rbox(3.9, 0.22, 2.0, 0.06), '#A44F35', { pos: [0, 3.15, 0.72], rot: [0.62, 0, 0] }, { mat: 'stone' });
-        g.add(rbox(3.9, 0.22, 2.0, 0.06), '#A44F35', { pos: [0, 3.15, -0.72], rot: [-0.62, 0, 0] }, { mat: 'stone' });
-        g.add(rbox(3.3, 0.9, 0.5, 0.06), wcol, { pos: [0, 3.05, 0] }, { mat: 'plaster' });
-        g.add(rbox(0.5, 1.3, 0.5, 0.04), '#8C7F70', { pos: [1.0, 3.75, -0.5] }, { mat: 'stone' });
-        g.add(rbox(0.8, 1.35, 0.1, 0.03), '#6E4A32', { pos: [0.6, 0.78, 1.52] }, { mat: 'wood' });
-        g.add(sphere(0.04, 8, 6), '#C9A65A', { pos: [0.85, 0.8, 1.6] }, { mat: 'metal', outline: false });
-        for (const [wx, wy, wz, ry] of [[-0.8, 1.75, 1.5, 0], [1.72, 1.8, 0.4, Math.PI / 2]]) {
-          g.group({ pos: [wx, wy, wz], rot: [0, ry, 0] }, (h) => {
-            h.add(rbox(0.72, 0.72, 0.08, 0.02), '#1E2A30', { pos: [0, 0, 0.01] }, { mat: 'glossy', outline: false });
-            h.add(rbox(0.84, 0.84, 0.05, 0.02), '#F4EEE2', { pos: [0, 0, 0.03] });
-            h.add(rbox(0.04, 0.72, 0.06, 0.01), '#F4EEE2', { pos: [0, 0, 0.06] }, { outline: false });
-            h.add(rbox(0.72, 0.04, 0.06, 0.01), '#F4EEE2', { pos: [0, 0, 0.06] }, { outline: false });
-            h.add(rbox(0.86, 0.08, 0.16, 0.02), '#F4EEE2', { pos: [0, -0.44, 0.07] });
-          });
+        // stone footing down to the lowest ground, with corner quoins
+        g.add(rbox(HW * 2 + 0.2, 0.5 + drop, HD * 2 + 0.2, 0.05), '#8E8374', { pos: [0, (base - drop) / 2 - 0.05, 0] }, { mat: 'stone' });
+        g.add(rbox(HW * 2, wallH, HD * 2, 0.04), st.wall, { pos: [0, base + wallH / 2, 0] }, WM);
+        if (!st.timber) {
+          for (const [cx, cz] of [[-HW, -HD], [HW, -HD], [-HW, HD], [HW, HD]]) for (let k = 0; k < Math.floor(wallH / 0.42); k++) {
+            const big = k % 2 === 0;
+            g.add(rbox(big ? 0.36 : 0.24, 0.2, big ? 0.24 : 0.36, 0.03), st.stone ? '#8C8378' : '#CFC4B2', { pos: [cx - Math.sign(cx) * (big ? 0.15 : 0.1), base + 0.22 + k * 0.42, cz - Math.sign(cz) * (big ? 0.1 : 0.15)] }, { mat: 'stone' });
+          }
+        } else {
+          // half-timbering: posts, rails and braces in dark oak on every face
+          const T = '#4A3424', WD2 = { mat: 'wood' };
+          for (const fz of [-1, 1]) {
+            for (const px of [-HW + 0.06, -0.62, 0.62, HW - 0.06]) g.add(rbox(0.12, wallH, 0.06, 0.01), T, { pos: [px, base + wallH / 2, fz * (HD + 0.02)] }, WD2);
+            for (const ry of st.floors === 2 ? [base + 0.06, base + 2.15, eave - 0.06] : [base + 0.06, eave - 0.06]) g.add(rbox(HW * 2, 0.12, 0.06, 0.01), T, { pos: [0, ry, fz * (HD + 0.02)] }, WD2);
+            if (fz < 0) for (const [bx, d2] of [[-HW + 0.6, 1], [HW - 0.6, -1]]) g.add(rbox(0.1, 1.5, 0.05, 0.01), T, { pos: [bx, base + 0.95, fz * (HD + 0.03)], rot: [0, 0, d2 * 0.62] }, WD2);
+          }
+          for (const fx of [-1, 1]) for (const pz of [-HD + 0.06, 0, HD - 0.06]) g.add(rbox(0.06, wallH, 0.12, 0.01), T, { pos: [fx * (HW + 0.02), base + wallH / 2, pz] }, WD2);
         }
+        // windows: frame, glass, glazing bars, stone sill, louvred shutters, flower boxes at the front
+        const win = (wx, wy, face, w = 0.7, h = 0.85, box = false) => {
+          const rot = face === 'front' ? 0 : face === 'back' ? Math.PI : face === 'left' ? -Math.PI / 2 : Math.PI / 2;
+          const off = face === 'front' || face === 'back' ? HD : HW;
+          const sx = face === 'back' ? -wx : wx;
+          g.group({ pos: face === 'left' ? [-off, wy, sx] : face === 'right' ? [off, wy, -sx] : [face === 'back' ? -wx : wx, wy, face === 'back' ? -off : off], rot: [0, rot, 0] }, (h2) => {
+            h2.add(rbox(w, h, 0.06, 0.01), '#1E2A30', { pos: [0, 0, 0.01] }, { mat: 'glossy', outline: false });
+            h2.add(rbox(w + 0.14, h + 0.14, 0.05, 0.02), st.trim, { pos: [0, 0, 0.03] }, { mat: 'paint' });
+            h2.add(rbox(0.035, h, 0.06, 0.01), st.trim, { pos: [0, 0, 0.06] }, { mat: 'paint', outline: false });
+            h2.add(rbox(w, 0.035, 0.06, 0.01), st.trim, { pos: [0, h * 0.12, 0.06] }, { mat: 'paint', outline: false });
+            h2.add(rbox(w + 0.24, 0.07, 0.16, 0.02), '#B8AD9C', { pos: [0, -h / 2 - 0.06, 0.08] }, { mat: 'stone' });
+            for (const s of [-1, 1]) {
+              h2.add(rbox(w * 0.52, h + 0.06, 0.04, 0.01), st.shutter, { pos: [s * (w / 2 + w * 0.3), 0, 0.05] }, { mat: 'paint' });
+              for (let k = 0; k < 5; k++) h2.add(rbox(w * 0.46, 0.022, 0.05, 0.004), st.shutter, { pos: [s * (w / 2 + w * 0.3), -h / 2 + 0.12 + k * (h - 0.2) / 4, 0.07] }, { mat: 'paint', outline: false });
+            }
+            if (box) {
+              h2.add(rbox(w + 0.1, 0.18, 0.22, 0.03), '#7A5434', { pos: [0, -h / 2 - 0.2, 0.18] }, { mat: 'wood' });
+              for (let k = 0; k < 5; k++) h2.add(sphere(0.06, 8, 6), [C.pink, C.butter, '#E98A9B', C.lilac, C.cream2][(k + i) % 5], { pos: [-w / 2 + 0.08 + k * (w - 0.16) / 4, -h / 2 - 0.07, 0.19] }, { mat: 'paint', outline: false });
+            }
+          });
+          W.group({ pos: [x, y, z], rot: [0, yaw, 0] }, (w2) => w2.group({ pos: face === 'left' ? [-off - 0.005, wy, sx] : face === 'right' ? [off + 0.005, wy, -sx] : [face === 'back' ? -wx : wx, wy, face === 'back' ? -off - 0.005 : off + 0.005], rot: [0, rot, 0] }, (p) => p.add(rbox(w - 0.04, h - 0.04, 0.02, 0.01), C.butter, { pos: [0, 0, 0.045] })));
+        };
+        const y1 = base + 1.35, y2 = base + 3.2;
+        win(-1.05, y1, 'front', 0.7, 0.85, true); win(1.05, y1, 'front', 0.7, 0.85, true);
+        win(0, y1, 'back'); win(0.3, y1, 'left'); win(-0.3, y1, 'right');
+        if (st.floors === 2) { win(-1.05, y2, 'front', 0.65, 0.75, true); win(1.05, y2, 'front', 0.65, 0.75, true); win(0, y2, 'back', 0.65, 0.75); win(0, y2, 'left', 0.6, 0.7); }
+        // the front door: frame, panelled door, fanlight, step and a hood or porch
+        g.add(rbox(1.0, 1.82, 0.08, 0.02), st.trim, { pos: [0, base + 0.9, HD + 0.02] }, { mat: 'paint' });
+        g.add(rbox(0.8, 1.68, 0.06, 0.02), st.door, { pos: [0, base + 0.84, HD + 0.05] }, { mat: 'glossy' });
+        for (const [px, py] of [[-0.18, 0.45], [0.18, 0.45], [-0.18, 1.2], [0.18, 1.2]]) g.add(rbox(0.26, py > 1 ? 0.4 : 0.6, 0.02, 0.01), st.door, { pos: [px, base + py, HD + 0.085] }, { mat: 'glossy', outline: false });
+        g.add(sphere(0.035, 8, 6), '#C9A24A', { pos: [0.28, base + 0.85, HD + 0.11] }, { mat: 'metal', outline: false });
+        g.add(rbox(0.6, 0.18, 0.04, 0.01), '#1E2A30', { pos: [0, base + 1.82, HD + 0.06] }, { mat: 'glossy', outline: false });
+        g.add(rbox(1.2, 0.12, 0.5, 0.02), '#B8AD9C', { pos: [0, base - 0.02, HD + 0.26] }, { mat: 'stone' });
+        g.add(rbox(0.7, 0.02, 0.4, 0.01), '#8E5B3E', { pos: [0, base + 0.05, HD + 0.3] }, { mat: 'fabric', outline: false });
+        if (st.porch) {
+          g.add(rbox(3.0, 0.12, 1.3, 0.02), '#8E6640', { pos: [0, base - 0.02, HD + 0.65] }, { mat: 'wood' });
+          for (const px of [-1.35, 1.35]) g.add(rbox(0.12, 2.15, 0.12, 0.02), st.trim, { pos: [px, base + 1.05, HD + 1.2] }, { mat: 'paint' });
+          g.add(rbox(3.3, 0.08, 1.55, 0.02), st.roof, { pos: [0, base + 2.22, HD + 0.72], rot: [0.2, 0, 0] }, { mat: 'stone' });
+          g.add(rbox(3.2, 0.12, 0.08, 0.02), st.trim, { pos: [0, base + 2.08, HD + 1.25] }, { mat: 'paint' });
+          for (const px of [-0.8, 0.8]) for (let k = 0; k < 4; k++) g.add(rbox(0.04, 0.5, 0.04, 0.01), st.trim, { pos: [px + (k - 1.5) * 0.12 * Math.sign(px), base + 0.3, HD + 1.2] }, { mat: 'paint', outline: false });
+          for (const px of [-1.0, 1.0]) g.add(rbox(0.5, 0.05, 0.05, 0.01), st.trim, { pos: [px * 1.08, base + 0.56, HD + 1.2] }, { mat: 'paint', outline: false });
+        } else {
+          // a little gabled hood on brackets
+          for (const s of [-1, 1]) {
+            g.add(rbox(0.68, 0.06, 0.62, 0.02), st.roof, { pos: [s * 0.3, base + 2.17, HD + 0.32], rot: [0, 0, -s * 0.5] }, { mat: 'stone' });
+            g.add(rbox(0.06, 0.32, 0.06, 0.01), st.trim, { pos: [s * 0.5, base + 1.86, HD + 0.32], rot: [0.6, 0, 0] }, { mat: 'paint' });
+          }
+        }
+        // lantern by the door, pots of flowers
+        g.add(rbox(0.05, 0.22, 0.12, 0.01), '#2B2826', { pos: [0.72, base + 1.62, HD + 0.08] }, { mat: 'metal' });
+        g.add(lathe([[0, 0], [0.07, 0], [0.09, 0.14], [0.04, 0.2], [0, 0.22]], 6), '#2B2826', { pos: [0.72, base + 1.45, HD + 0.18] }, { mat: 'metal' });
+        G.add(sphere(0.045, 8, 6), C.butter, { pos: [0.72, base + 1.53, HD + 0.18] });
+        for (const px of [-0.72, 0.62]) {
+          g.add(lathe([[0, 0], [0.14, 0], [0.18, 0.26], [0.2, 0.28], [0, 0.28]], 12), '#B4593A', { pos: [px - 0.0, base - 0.08, HD + (st.porch ? 1.0 : 0.5)] }, { mat: 'ceramic' });
+          for (let k = 0; k < 4; k++) g.add(sphere(0.07, 8, 6), ['#4E7A34', C.pink, '#5E8E42', C.butter][k], { pos: [px + (k % 2 - 0.5) * 0.12, base + 0.28 + (k > 1 ? 0.08 : 0), HD + (st.porch ? 1.0 : 0.5) + (k > 1 ? 0.05 : -0.05)] }, { mat: k % 2 ? 'paint' : 'foliage', outline: false });
+        }
+        // gable ends
+        for (const sx of [-HW, HW]) {
+          const tri = new THREE.Shape(); tri.moveTo(-HD, 0); tri.lineTo(HD, 0); tri.lineTo(0, rise - 0.08); tri.lineTo(-HD, 0);
+          g.add(new THREE.ExtrudeGeometry(tri, { depth: 0.16, bevelEnabled: false }).rotateY(Math.PI / 2).translate(-0.08, 0, 0), st.wall, { pos: [sx, eave, 0] }, WM);
+          if (st.timber) {
+            g.add(rbox(0.07, rise - 0.15, 0.1, 0.01), '#4A3424', { pos: [sx + Math.sign(sx) * 0.09, eave + (rise - 0.15) / 2, 0] }, { mat: 'wood' });
+            g.add(rbox(0.07, 0.1, HD * 2, 0.01), '#4A3424', { pos: [sx + Math.sign(sx) * 0.09, eave + 0.05, 0] }, { mat: 'wood' });
+          }
+          win(0, eave + 0.5, sx < 0 ? 'left' : 'right', 0.38, 0.42);
+        }
+        // tiled roof in rows on both slopes, with overhanging eaves, fascia and barge boards
+        const run = HD + 0.38, ang = Math.atan2(rise, run), rows = 8, len = Math.hypot(rise, run);
+        for (const sd of [-1, 1]) {
+          for (let r = 0; r < rows; r++) {
+            const k = (r + 0.5) / rows;
+            g.add(rbox(HW * 2 + 0.62, 0.06, (len / rows) * 1.2, 0.012), r % 2 ? st.roof : shadeHex(st.roof, -0.04), { pos: [0, eave + 0.08 + rise * (1 - k), sd * run * k], rot: [sd * ang, 0, 0] }, { mat: 'stone' });
+          }
+          g.add(rbox(HW * 2 + 0.66, 0.14, 0.05, 0.01), st.trim, { pos: [0, eave + 0.02, sd * (run + 0.02)] }, { mat: 'paint' });
+          // gutter
+          g.add(new THREE.CylinderGeometry(0.05, 0.05, HW * 2 + 0.5, 8).rotateZ(Math.PI / 2), '#8A8F94', { pos: [0, eave - 0.06, sd * (run + 0.06)] }, { mat: 'metal', outline: false });
+          for (const sx of [-1, 1]) {
+            const mid = new THREE.Vector3(sx * (HW + 0.31), eave + rise / 2 + 0.06, sd * run / 2);
+            g.add(rbox(0.05, 0.2, len + 0.06, 0.01), st.trim, { pos: [mid.x, mid.y, mid.z], rot: [sd * ang, 0, 0] }, { mat: 'paint' });
+          }
+        }
+        g.add(new THREE.CylinderGeometry(0.035, 0.035, eave - 0.1, 8), '#8A8F94', { pos: [HW + 0.2, (eave - 0.1) / 2, HD + 0.42] }, { mat: 'metal', outline: false });
+        g.add(capsule(0.1, HW * 2 + 0.5, 3, 10), shadeHex(st.roof, -0.08), { pos: [0, ridge + 0.1, 0], rot: [0, 0, Math.PI / 2] }, { mat: 'stone' });
+        // dormer on the front slope
+        if (st.dormer) {
+          g.group({ pos: [-0.6, eave + 0.55, run * 0.42] }, (d) => {
+            d.add(rbox(0.9, 0.9, 0.9, 0.03), st.wall, { pos: [0, 0.25, 0] }, WM);
+            d.add(rbox(0.5, 0.48, 0.05, 0.02), '#1E2A30', { pos: [0, 0.3, 0.46] }, { mat: 'glossy', outline: false });
+            d.add(rbox(0.6, 0.58, 0.04, 0.02), st.trim, { pos: [0, 0.3, 0.48] }, { mat: 'paint' });
+            for (const s of [-1, 1]) d.add(rbox(0.66, 0.05, 1.05, 0.01), st.roof, { pos: [s * 0.27, 0.84, 0.05], rot: [0, 0, -s * 0.62] }, { mat: 'stone' });
+          });
+          W.group({ pos: [x, y, z], rot: [0, yaw, 0] }, (w2) => w2.add(rbox(0.46, 0.44, 0.02, 0.01), C.butter, { pos: [-0.6, eave + 0.85, run * 0.42 + 0.49] }));
+        }
+        // chimney with a cap and two pots
+        const chy = ridge - 0.4;
+        g.add(rbox(0.6, 1.9, 0.6, 0.03), st.stone ? '#7D756B' : '#8C5A44', { pos: [HW - 0.75, chy, -0.55] }, { mat: 'stone' });
+        g.add(rbox(0.72, 0.1, 0.72, 0.02), '#6F685F', { pos: [HW - 0.75, chy + 0.98, -0.55] }, { mat: 'stone' });
+        for (const px of [-0.12, 0.14]) g.add(roundCyl(0.075, 0.26, 0.015, 10), '#B4593A', { pos: [HW - 0.75 + px, chy + 1.02, -0.55] }, { mat: 'ceramic' });
       });
-      const [cx, cz] = toWorld(x, z, yaw, 1.0, -0.5);
-      smokeSpots.push(new THREE.Vector3(cx, y + 4.5, cz));
+      const [cx, cz] = toWorld(x, z, yaw, HW - 0.75, -0.55);
+      smokeSpots.push(new THREE.Vector3(cx, y + ridge + 0.9, cz));
       for (const [lx, lz] of [[-1, -0.9], [1, -0.9], [-1, 0.9], [1, 0.9]]) { const [px, pz] = toWorld(x, z, yaw, lx, lz); circle(px, pz, 1.05); }
-      camBoxes.push({ x0: x - 2.2, z0: z - 2.2, x1: x + 2.2, z1: z + 2.2, h: y + 4.2 });
-      W.group({ pos: [x, y, z], rot: [0, yaw, 0] }, (g) => {
-        g.add(rbox(0.68, 0.68, 0.02, 0.01), C.butter, { pos: [-0.8, 1.75, 1.555] });
-        g.add(rbox(0.68, 0.68, 0.02, 0.01), C.butter, { pos: [1.755, 1.8, 0.4], rot: [0, Math.PI / 2, 0] });
-      });
-      const [wx, wz] = toWorld(x, z, yaw, -0.8, 1.6);
-      lampGlows.push({ p: new THREE.Vector3(wx, y + 1.75, wz), size: 1.6, color: C.butter });
+      if (STYLES[i % STYLES.length].porch) for (const lx of [-1.35, 1.35]) { const [px, pz] = toWorld(x, z, yaw, lx, HD + 1.2); circle(px, pz, 0.12); }
+      camBoxes.push({ x0: x - 2.3, z0: z - 2.3, x1: x + 2.3, z1: z + 2.3, h: y + ridge + 0.2 });
+      const [wx, wz] = toWorld(x, z, yaw, 0.72, HD + 0.2);
+      lampGlows.push({ p: new THREE.Vector3(wx, y + base + 1.53, wz), size: 1.1, color: C.butter });
+      const [gx, gz] = toWorld(x, z, yaw, -1.05, HD + 0.15);
+      lampGlows.push({ p: new THREE.Vector3(gx, y + base + 1.35, gz), size: 1.5, color: C.butter });
     });
     const hills = [];
     for (let i = 0; i < 26; i++) {
@@ -1009,7 +1196,7 @@ export function buildWorld(scene, fx) {
   {
     const cb = WILD.cabin, cy = terrainHeight(cb.x, cb.z);
     camBoxes.push({ x0: cb.x - 2.6, z0: cb.z - 2.6, x1: cb.x + 2.6, z1: cb.z + 2.6, h: cy + 4.0 });
-    camBoxes.push({ x0: -22.8, z0: 16.6, x1: -20.0, z1: 20.2, h: beachHeight(-21.4, 18.4) + 3.0 });
+    camBoxes.push({ x0: -23.4, z0: 16.6, x1: -20.6, z1: 20.2, h: beachHeight(-22.0, 18.4) + 3.0 });
   }
 
   // ---------- assemble static groups ----------
@@ -1032,7 +1219,7 @@ export function buildWorld(scene, fx) {
     const pos = terrainGeo.attributes.position, col = terrainGeo.attributes.color;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
-      if (x < -20 || x > 61 || z < -61 || z > 61) continue;
+      if (x < -20 || x > 74 || z < -74 || z > 74) continue;
       let occ = 1;
       for (const c of collidersNear(x, z)) {
         const d = c.c ? Math.max(0, Math.hypot(x - c.x, z - c.z) - c.r) : Math.hypot(Math.max(c.x0 - x, 0, x - c.x1), Math.max(c.z0 - z, 0, z - c.z1));
@@ -1048,12 +1235,13 @@ export function buildWorld(scene, fx) {
   // where grass grows (0..1): not on paths, the plaza, sand, the stage, under buildings or past the cliff
   function grassDensity(x, z) {
     if (x < L.cliffX + 0.3) return 0;
+    if (onSteps(x, z, 0.6)) return 0;
     if (isWater(x, z, 0) || Math.hypot(x - L.pond.x, z - L.pond.z) < 5.0) return 0;
     let d = 1 - pathAmt(x, z) * 1.6;
     const dp = Math.hypot(x, z);
     if (dp < 7.7) d = Math.min(d, smooth(7.3, 7.9, dp));
     if (stageHeight(x, z) > -1) return 0;
-    if (x > 7.6 && x < 14.6 && z > -13.4 && z < -7.0) return 0;
+    if (x > 7.6 && x < 18.9 && z > -13.4 && z < -6.6) return 0; // the café and its paved terrace
     if (Math.abs(x - L.blanket.x) < 1.15 && Math.abs(z - L.blanket.z) < 0.95) return 0;
     let near = 9;
     for (const c of collidersNear(x, z)) {
@@ -1065,7 +1253,7 @@ export function buildWorld(scene, fx) {
     if (e > 0) d = Math.min(d, wildGrass(x, z));
     // thinner under the trees, none up on the mountains
     const shade = e > 0 ? 0.55 + 0.45 * smooth(0.2, 2.2, near) : 1;
-    const edge = Math.max(x - 60, Math.abs(z) - 60);
+    const edge = Math.max(x - 72, Math.abs(z) - 72);
     return Math.max(0, d) * shade * (0.75 + 0.25 * Math.sin(x * 0.7 + z * 0.4)) * (1 - smooth(4, 12, e) * 0.25) * (1 - smooth(0, 6, edge));
   }
 
@@ -1087,11 +1275,7 @@ export function buildWorld(scene, fx) {
       if (x >= -19.6) return y < terrainHeight(x, z) - 0.15;
       const top = terrainHeight(-19.6, z);
       if (y > top) return false;
-      const k = (top - y) / (top + 9.2);
-      const cove = smooth(3.0, 5.2, z) * (1 - smooth(20.6, 22.8, z));
-      let face = -19.6 - (0.35 * Math.min(1, k * 4) + 1.6 * k) * (1 - cove * 0.85);
-      if (z > -12.6 && z < 3.2 && y > -6.2) face = Math.max(face, -20.45);
-      return x > face;
+      return x > cliffFaceX(z, y, top) + 0.15;
     },
     // keep a camera out of the cliff and above whatever is under it
     cameraFloor(x, z, y) {

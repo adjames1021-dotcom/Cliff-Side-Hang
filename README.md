@@ -24,11 +24,12 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 - **Pond:** a dock to fish from, lily pads, and ducks paddling in loops.
 - **Park:** a swing set, a seesaw, a picnic blanket and a basket of snacks.
 - **Stage:** a piano, drums and a xylophone.
-- **Campfire:** log seats around it.
+- **Campfire:** log seats around it on a circle of trodden earth.
 - **Lookout:** a hilltop telescope looking out over the sea, where boats sail by.
-- **The woods:** rolling wooded hills all round the village, laced with ten signposted trails (Woodland Loop, Summit Path, Ridge Walk, Windmill Way, Meadow Cut, Falls Path, Creekside Walk and spurs). Out there: a summit with a cairn and a view, Mossfall Falls and its pool, a creek you can follow to where it pours off the cliff into the sea, a footbridge, a woodcutter's cabin with rocking chairs, old ruins with an arch and a well, a fairy ring that glows at night, and a meadow where deer graze.
-- **The cove:** steps cut down the cliff face lead to a sandy beach with a boathouse, deck chairs, rock pools and a dock with three sailboats.
+- **The woods:** rolling wooded hills all round the village, laced with ten signposted trails (Woodland Loop, Summit Path, Ridge Walk, Windmill Way, Meadow Cut, Falls Path, Creekside Walk and spurs). Out there: a summit with a cairn and a view, Mossfall Falls and its pool, a creek you can follow to where it pours off the cliff into the sea, a footbridge, a woodcutter's cabin with rocking chairs, old ruins with an arch and a well, a fairy ring that glows at night, and a meadow where deer graze. The forest runs about 70 m out in every direction. It has glades, saplings and big old trees, fallen mossy trunks, ferns and mushrooms.
+- **The cliff and the cove:** a proper sandstone sea cliff, with buttresses, gullies, ledges, moss and scree at its foot. A stone gateway with a "Cove & Pier" sign marks the top of wide steps cut down the face. A plank boardwalk at the bottom leads across the sand to a boathouse, deck chairs, rock pools and a dock with three sailboats.
 - **Things to find:** 24 kinds of finds — mushrooms, feathers, acorns, shells, sea glass, crystals, a golden acorn, a message in a bottle — and animals to spot, all kept in your journal.
+- **Houses:** stone and half-timbered cottages with shuttered windows, flower boxes, porches, dormers, gutters and chimneys. Their windows glow at night.
 - **Ambient life:** butterflies, ducks, a sleeping cat on a barrel, chimney smoke and swaying grass.
 - **Day and night:** a full day takes 20 minutes, and everyone in a room shares the same clock. New rooms start at golden hour. Lamps glow, fireflies come out and stars appear at night.
 
@@ -64,7 +65,7 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 
 ## Graphics
 
-Open the menu (Esc or ☰) and choose **Graphics**, or use the link on the title screen. Presets go from **Low** to **Ultra**, and every option can be set on its own: resolution, shadows, lamp lights at night, grass, glow (bloom), sun rays, ambient occlusion, sea reflections, fluffy fur, anti-aliasing, field of view, first or third person, the realistic or toon look, and an FPS counter. Settings are saved on each device. With **Auto-adjust** on, the game lowers the resolution a little (and then the post effects) when frames start dropping, and brings them back when things are smooth.
+Open the menu (Esc or ☰) and choose **Graphics**, or use the link on the title screen. Presets go from **Low** to **Ultra**, and every option can be set on its own: resolution, shadows, lamp lights at night, grass, glow (bloom), sun rays, ambient occlusion, sea reflections, fuzzy fur (experimental, off by default), anti-aliasing, field of view, first or third person, the realistic or toon look, and an FPS counter. Settings are saved on each device. With **Auto-adjust** on, the game lowers the resolution a little (and then the post effects) when frames start dropping, and brings them back when things are smooth.
 
 ## Run it locally
 
@@ -155,7 +156,7 @@ src/water.js          the sea (Gerstner waves, foam, surf, reflections) and pond
 src/materials.js      physically based materials with procedural surface detail, and the realistic/toon switch
 src/settings.js       graphics presets, options and the graphics menu
 src/post.js           ambient occlusion, sun rays, bloom, colour grading
-src/characters.js     plush chibi animals (fur shells, glossy eyes, knit jumpers), accessories, props, animations
+src/characters.js     plush chibi animals (glossy eyes, knit jumpers, optional fur shells), accessories, props, animations
 src/toon.js           shape helpers, mesh merging, toon materials and ink outlines
 src/daynight.js       physical sky, sun/moon, clouds, stars, fog, sky lighting, lamp lights, fireflies
 src/effects.js        particles: hearts, sparkles, notes, puffs, z's, confetti, mist, foam, glows

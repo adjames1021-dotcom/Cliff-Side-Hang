@@ -131,6 +131,7 @@ export class Foliage {
     this.chunks = new Map();
     this.wind = { value: 0 };
     this.groups = [];
+    this.small = []; // ferns, leaf litter and pebbles: hidden once they're too far away to make out
   }
 
   chunk(x, z) {
@@ -269,6 +270,12 @@ export class Foliage {
     for (const [key, ch] of this.chunks) {
       const group = new THREE.Group();
       group.name = 'foliage ' + key;
+      const small = new THREE.Group();
+      const [kx, kz] = key.split(',').map(Number);
+      small.userData.cx = (kx + 0.5) * CHUNK;
+      small.userData.cz = (kz + 0.5) * CHUNK;
+      group.add(small);
+      this.small.push(small);
       const add = (b, opts) => { if (!b.empty) group.add(b.build(opts)); };
       add(ch.trunks, { castShadow: true, outline: true });
       add(ch.blobs, { castShadow: true, outline: true });
@@ -289,7 +296,7 @@ export class Foliage {
         im.receiveShadow = true;
         im.userData.noAO = true;
         im.computeBoundingSphere();
-        group.add(im);
+        (kind === 'fern' || kind === 'litter' ? small : group).add(im);
       }
       if (ch.pebbles.length) {
         const im = new THREE.InstancedMesh(pebGeo, REAL.stone, ch.pebbles.length);
@@ -302,7 +309,7 @@ export class Foliage {
         im.receiveShadow = true;
         im.computeBoundingSphere();
         registerMesh(im, 'stone');
-        group.add(im);
+        small.add(im);
       }
       scene.add(group);
       this.groups.push(group);
@@ -310,6 +317,12 @@ export class Foliage {
   }
 
   update(t) { this.wind.value = t; }
+
+  // hide the small stuff in chunks well beyond where you could see it (saves a lot of draw calls in the big forest)
+  cull(x, z, range = 70) {
+    const r = range + CHUNK * 0.71;
+    for (const g of this.small) g.visible = Math.hypot(g.userData.cx - x, g.userData.cz - z) < r;
+  }
 }
 
 export { noiseRock, mossy };
