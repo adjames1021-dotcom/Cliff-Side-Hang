@@ -14,8 +14,9 @@ It's plain static files (Three.js 0.160 from a CDN, no bundler). One **Cloudflar
 | ![The café](docs/cafe.jpg) | ![Toasting marshmallows at the campfire](docs/campfire.jpg) |
 | ![A signposted trail in the woods](docs/woods.jpg) | ![Mossfall Falls](docs/falls.jpg) |
 | ![The summit at golden hour](docs/summit.jpg) | ![The fairy glen at night](docs/glen-night.jpg) |
-| ![The cove and its dock](docs/cove.jpg) | ![Sailing past the cliff steps](docs/sailing.jpg) |
-| ![The character creator](docs/creator.jpg) | |
+| ![The gateway to the cove and pier](docs/gateway.jpg) | ![The sea cliff and the cove from the dock](docs/cliff.jpg) |
+| ![The cove: boardwalk, dock and boathouse](docs/cove.jpg) | ![Sailing past the cliff steps](docs/sailing.jpg) |
+| ![Cottages on the edge of the woods](docs/cottages.jpg) | ![The character creator](docs/creator.jpg) |
 
 ## What's in the world
 

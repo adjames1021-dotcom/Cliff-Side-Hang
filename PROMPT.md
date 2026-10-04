@@ -291,13 +291,14 @@ Add checks for: hiking out on a trail, the map edge, the cliff steps going down,
 - The camera never ends up inside the step rock (`stepsSolid`).
 
 ### The cliff
-- The face is one function, `cliffFaceX(z, y, top)`, used both to build the mesh and for camera collisions. The turf rolls over the lip, there's a slight undercut beneath it, and below that come buttresses and gullies, strata ledges, crags, and a talus apron at the foot. The steps and the cove are carved out of it.
+- The face is one function, `cliffFaceX(z, y, top)`, used both to build the mesh and for camera collisions. The turf rolls over the lip, there's a slight undercut beneath it, and below that come buttresses and gullies, strata ledges, crags, and a talus apron at the foot. The rock comes from value noise, so nothing repeats in a grid, and the beds jut out more in some places than in others. The steps and the cove are carved out of it.
 - Colour comes in tilted bands (turf, soil, sandstone layers), with darker gullies, rain streaks, a wet band and algae near the waterline, and moss on anything flat enough. Ferns and bushes grow on the ledges, and scree and boulders lie at the foot (none in the cove).
 - The sea stacks have strata ledges, grooves, a flared foot and rounded shoulders.
 
 ### The forest
 - The woods reach about 72 m out, with mountains beyond. Trees are spaced more tightly, there are glades, and ages vary: saplings, ordinary trees and big old ones. The undergrowth is doubled.
-- Fallen trees lie in the deep woods: mossy trunks with branch stubs, a splintered tip and the root plate torn up with the tree. Each has colliders, with ferns and mushrooms along it.
+- Fallen trees lie in the deep woods, well apart from each other and from houses and landmarks: trunks with patches of moss, branch stubs, a splintered tip and the lumpy root plate torn up with the tree. Each has colliders, with ferns and mushrooms along it.
+- Each tier of a pine is a ragged skirt that droops at the tips, not a smooth cone.
 - There are forty extra find spots in the deep woods.
 - Ferns, leaf litter and pebbles in chunks more than about 70 m from the camera are hidden (`Foliage.cull`).
 
@@ -309,7 +310,8 @@ Cottages come from one builder with five styles. Each style sets wall, roof, tri
 - gables with small windows;
 - tiled roof rows, fascia, gutters, a downpipe and barge boards;
 - a ridge cap;
-- a chimney with a cap and pots.
+- a chimney with a cap and pots;
+- stone steps down from the door (or the porch) wherever the ground falls away in front, with the flower pots at the bottom.
 
 ### Grass
 - Grass only grows on open ground. There is none on the beach, cliff, steps, sand, plaza, café terrace (now flagstones), the trodden earth round the campfire, steep slopes, or under anything solid.
