@@ -141,7 +141,7 @@ await ev(() => { window.__hh.autoMove = { x: 0, z: 1 }; });
 await sleep(1500);
 await ev(() => { window.__hh.autoMove = null; });
 check(await ev(() => window.__hh.me.pos.x > 30.5 || Math.abs(window.__hh.me.pos.z + 1.5) > 0.5), 'you can hike along it');
-check(await ev(() => !window.__hh.world.walkable(70, 0)), 'the mountains stop you at the edge of the map');
+check(await ev(() => window.__hh.world.walkable(68, 0) && !window.__hh.world.walkable(76, 0) && !window.__hh.world.walkable(0, -76)), 'the mountains stop you at the edge of the map');
 check(await ev(() => !window.__hh.world.walkable(-19.5, 10)), 'no walking off the clifftop');
 // cliff steps: walk down the first flight
 await ev(() => place(-19.05, 0.4, Math.PI));
