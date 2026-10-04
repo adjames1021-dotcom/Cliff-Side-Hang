@@ -728,7 +728,11 @@ export function buildWoods(ctx) {
         g.group({ rot: [0, 0, pitch] }, (t) => {
           // the trunk, a moss blanket along its top, and a splintered tip
           t.add(capsule(r, L, 4, 14), bark, { rot: [0, 0, Math.PI / 2] }, { mat: 'wood' });
-          t.add(capsule(r, L * 0.82, 4, 14), '#5C7A36', { pos: [-L * 0.04, r * 0.3, 0], rot: [0, 0, Math.PI / 2], scale: [0.78, 1, 1.05] }, { mat: 'foliage', outline: false });
+          for (let k = 0, at = -L * 0.42; k < 3 && at < L * 0.36; k++) {
+            const len = L * (0.12 + R() * 0.18);
+            t.add(capsule(r * 0.9, len, 4, 12), ['#4F6B2E', '#5A7434', '#465F2A'][k], { pos: [at + len / 2, r * 0.42, (R() - 0.5) * r * 0.3], rot: [0, 0, Math.PI / 2], scale: [0.55, 1, 0.95] }, { mat: 'foliage', outline: false });
+            at += len + L * (0.06 + R() * 0.12);
+          }
           t.add(lathe([[0, 0], [r * 0.9, 0], [r * 0.5, r * 1.1], [0, r * 1.8]], 9), '#7D6650', { pos: [L / 2 + r * 0.6, 0, 0], rot: [0, 0, -Math.PI / 2] }, { mat: 'wood' });
           // branch stubs
           for (let k = 0; k < 4; k++) {
