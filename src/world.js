@@ -1002,7 +1002,7 @@ export function buildWorld(scene, fx) {
   {
     const b = null;
     const inner = [[-14, 13, 1.1], [-3, 16, 1], [-15.5, 17, 1.2, 'blossom'], [-3.6, 15.4, 0.9, 'blossom'], [15, 15, 1.1], [16, 2, 1, 'pine'],
-      [-15.0, 4.9, 1.1, 'pine'], [5, -16.5, 1.1], [16.5, -15.5, 1.2, 'blossom'], [-6.5, -16.5, 1.1, 'pine'], [6.5, 16.5, 1], [-9, -8.6, 0.9, 'blossom'], [15.5, -3.5, 0.9]];
+      [-15.0, 4.9, 1.1, 'pine'], [5, -16.5, 1.1], [16.5, -15.5, 1.2, 'blossom'], [-6.5, -16.5, 1.1, 'pine'], [6.5, 16.5, 1], [-9, -8.6, 0.9, 'blossom'], [12.6, -0.2, 0.9]];
     for (const [x, z, s, k] of inner) { tree(b, x, z, s, k); circle(x, z, 0.3 * s); }
     const bushes = [[-17, 9], [-16.5, -6], [3.5, -9.5], [-3.5, -9.5], [7.5, 2.5], [17.5, 9], [-2.5, 18], [4, 13.5], [13, -15.5], [-17.5, 18.5], [18, 18]];
     for (const [x, z] of bushes) { bush(b, x, z, 1 + R() * 0.3); circle(x, z, 0.5); }
@@ -1023,7 +1023,7 @@ export function buildWorld(scene, fx) {
     const cols = [C.pink, C.butter, C.cream2, C.rose, C.apricot, C.lilac];
     for (let i = 0; i < 260; i++) {
       const x = -18 + R() * 37, z = -18.5 + R() * 37;
-      if (Math.hypot(x, z) < 7.8 || pathAmt(x, z) > 0.1 || Math.hypot(x - L.pond.x, z - L.pond.z) < 5.3 || nearAny(x, z, 0.5) || stageHeight(x, z) > -1 || (x > 7.5 && x < 15 && z < -7)) continue;
+      if (Math.hypot(x, z) < 7.8 || pathAmt(x, z) > 0.1 || Math.hypot(x - L.pond.x, z - L.pond.z) < 5.3 || nearAny(x, z, 0.5) || stageHeight(x, z) > -1 || (x > 7.5 && x < 19 && z < -6.5)) continue;
       const y = terrainHeight(x, z);
       b.add(capsule(0.018, 0.16, 2, 5), C.leafDark, { pos: [x, y + 0.08, z] }, { outline: false });
       b.add(sphere(0.06, 8, 6), cols[i % cols.length], { pos: [x, y + 0.2, z], scale: [1, 0.7, 1] }, { outline: false });
