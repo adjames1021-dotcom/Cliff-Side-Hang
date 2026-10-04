@@ -1112,6 +1112,20 @@ export function buildWorld(scene, fx) {
         g.add(rbox(0.6, 0.18, 0.04, 0.01), '#1E2A30', { pos: [0, base + 1.82, HD + 0.06] }, { mat: 'glossy', outline: false });
         g.add(rbox(1.2, 0.12, 0.5, 0.02), '#B8AD9C', { pos: [0, base - 0.02, HD + 0.26] }, { mat: 'stone' });
         g.add(rbox(0.7, 0.02, 0.4, 0.01), '#8E5B3E', { pos: [0, base + 0.05, HD + 0.3] }, { mat: 'fabric', outline: false });
+        // on a slope the doorstep can be well above the grass: stone steps down to it (and the pots go at the bottom)
+        let potZ = HD + (st.porch ? 1.0 : 0.5), potY = base - 0.08;
+        {
+          const from = st.porch ? HD + 1.3 : HD + 0.51;
+          const gx = x + Math.sin(yaw) * (from + 0.5), gz = z + Math.cos(yaw) * (from + 0.5);
+          const gl = terrainHeight(gx, gz) - y, D = base + 0.04 - gl;
+          const n = D > 0.24 ? Math.round(D / 0.19) : 0;
+          for (let k = 1; k <= n; k++) {
+            const top = base + 0.04 - (k * D) / (n + 1), zc = from + (k - 0.5) * 0.3;
+            g.add(rbox(1.15, top - gl + 0.12, 0.32, 0.03), k % 2 ? '#B8AD9C' : '#ADA290', { pos: [0, (top + gl - 0.12) / 2, zc] }, { mat: 'stone' });
+            circle(x + Math.sin(yaw) * zc, z + Math.cos(yaw) * zc, 0.45);
+          }
+          if (n && !st.porch) { potZ = from + n * 0.3 + 0.2; potY = gl - 0.03; }
+        }
         if (st.porch) {
           g.add(rbox(3.0, 0.12, 1.3, 0.02), '#8E6640', { pos: [0, base - 0.02, HD + 0.65] }, { mat: 'wood' });
           for (const px of [-1.35, 1.35]) g.add(rbox(0.12, 2.15, 0.12, 0.02), st.trim, { pos: [px, base + 1.05, HD + 1.2] }, { mat: 'paint' });
@@ -1131,8 +1145,8 @@ export function buildWorld(scene, fx) {
         g.add(lathe([[0, 0], [0.07, 0], [0.09, 0.14], [0.04, 0.2], [0, 0.22]], 6), '#2B2826', { pos: [0.72, base + 1.45, HD + 0.18] }, { mat: 'metal' });
         G.add(sphere(0.045, 8, 6), C.butter, { pos: [0.72, base + 1.53, HD + 0.18] });
         for (const px of [-0.72, 0.62]) {
-          g.add(lathe([[0, 0], [0.14, 0], [0.18, 0.26], [0.2, 0.28], [0, 0.28]], 12), '#B4593A', { pos: [px - 0.0, base - 0.08, HD + (st.porch ? 1.0 : 0.5)] }, { mat: 'ceramic' });
-          for (let k = 0; k < 4; k++) g.add(sphere(0.07, 8, 6), ['#4E7A34', C.pink, '#5E8E42', C.butter][k], { pos: [px + (k % 2 - 0.5) * 0.12, base + 0.28 + (k > 1 ? 0.08 : 0), HD + (st.porch ? 1.0 : 0.5) + (k > 1 ? 0.05 : -0.05)] }, { mat: k % 2 ? 'paint' : 'foliage', outline: false });
+          g.add(lathe([[0, 0], [0.14, 0], [0.18, 0.26], [0.2, 0.28], [0, 0.28]], 12), '#B4593A', { pos: [px - 0.0, potY, potZ] }, { mat: 'ceramic' });
+          for (let k = 0; k < 4; k++) g.add(sphere(0.07, 8, 6), ['#4E7A34', C.pink, '#5E8E42', C.butter][k], { pos: [px + (k % 2 - 0.5) * 0.12, potY + 0.36 + (k > 1 ? 0.08 : 0), potZ + (k > 1 ? 0.05 : -0.05)] }, { mat: k % 2 ? 'paint' : 'foliage', outline: false });
         }
         // gable ends
         for (const sx of [-HW, HW]) {
